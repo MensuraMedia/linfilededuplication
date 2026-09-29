@@ -32,17 +32,21 @@ class SpotCheckDialog(Adw.Dialog):
         header.set_title_widget(Adw.WindowTitle(title=_("SpotCheck"), subtitle=group.title))
         toolbar.add_top_bar(header)
 
-        scroller = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
-        scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        panels = Gtk.Box(spacing=14)
+        count = len(group.files)
+        panels = Gtk.Box(spacing=14, hexpand=True, vexpand=True, homogeneous=count <= 4)
         panels.set_margin_top(16)
         panels.set_margin_bottom(16)
         panels.set_margin_start(16)
         panels.set_margin_end(16)
         for f in group.files:
-            panels.append(self._panel(f))
-        scroller.set_child(panels)
-        toolbar.set_content(scroller)
+            panels.append(self._panel(f, count))
+        if count <= 4:                          # few files: fill the modal width
+            toolbar.set_content(panels)
+        else:                                   # many files: scroll horizontally
+            scroller = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
+            scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+            scroller.set_child(panels)
+            toolbar.set_content(scroller)
 
         bottom = Gtk.Box(spacing=12)
         bottom.add_css_class("toolbar")
@@ -65,10 +69,11 @@ class SpotCheckDialog(Adw.Dialog):
         self.set_child(toolbar)
         self._refresh()
 
-    def _panel(self, f: FileEntry) -> Gtk.Widget:
-        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    def _panel(self, f: FileEntry, count: int) -> Gtk.Widget:
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, hexpand=True, vexpand=True)
         panel.add_css_class("app-card")
-        panel.set_size_request(250, -1)
+        if count > 4:
+            panel.set_size_request(300, -1)     # min width when the row scrolls
         if f.keeper:
             panel.add_css_class("app-keep")
 
@@ -112,17 +117,19 @@ class SpotCheckDialog(Adw.Dialog):
 
     def _preview_widget(self, f: FileEntry) -> Gtk.Widget:
         pv = previewmod.preview(f.path)
-        frame = Gtk.Frame()
-        frame.set_size_request(220, 150)
+        frame = Gtk.Frame(hexpand=True, vexpand=True)
+        frame.set_size_request(-1, 200)         # minimum height; grows to fill
         if pv.kind == previewmod.KIND_IMAGE and pv.image_path:
             pic = Gtk.Picture.new_for_filename(pv.image_path)
             pic.set_content_fit(Gtk.ContentFit.CONTAIN)
-            pic.set_size_request(220, 150)
+            pic.set_hexpand(True)
+            pic.set_vexpand(True)
             frame.set_child(pic)
         else:
-            sw = Gtk.ScrolledWindow()
+            sw = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
             sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-            lbl = Gtk.Label(label=pv.text or pv.note or _("No preview"), xalign=0.0, yalign=0.0, wrap=True)
+            lbl = Gtk.Label(label=pv.text or pv.note or _("No preview"), xalign=0.0, yalign=0.0,
+                            wrap=True, hexpand=True)
             lbl.add_css_class("app-mono")
             lbl.add_css_class("app-small")
             lbl.set_margin_top(8)

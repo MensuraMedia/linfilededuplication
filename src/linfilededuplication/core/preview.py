@@ -18,8 +18,8 @@ KIND_IMAGE = "image"
 KIND_TEXT = "text"
 KIND_META = "meta"
 
-MAX_BYTES = 16 * 1024
-MAX_LINES = 40
+MAX_BYTES = 64 * 1024
+MAX_LINES = 200
 
 _IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
 _TEXT_EXT = {".txt", ".md", ".rst", ".log", ".csv", ".tsv", ".json", ".yaml", ".yml", ".toml",
@@ -81,7 +81,7 @@ def _office_snippet(path: str) -> Preview:
                 return _meta(path, "Office document")
             with z.open(member) as fh:
                 text = _strip_xml(fh.read(MAX_BYTES * 4).decode("utf-8", errors="replace"))
-            return Preview(KIND_TEXT, os.path.basename(path), text=text[:2000])
+            return Preview(KIND_TEXT, os.path.basename(path), text=text[:6000])
     except (OSError, zipfile.BadZipFile) as exc:
         return _meta(path, f"Could not read document: {exc}")
 
@@ -113,7 +113,7 @@ def _pdf_snippet(path: str) -> Preview:
                              capture_output=True, timeout=8, text=True)
         text = (out.stdout or "").strip()
         if text:
-            return Preview(KIND_TEXT, os.path.basename(path), text=text[:2000], note="page 1")
+            return Preview(KIND_TEXT, os.path.basename(path), text=text[:6000], note="page 1")
     except (OSError, subprocess.SubprocessError):
         pass
     try:                                             # optional pure-python fallback
@@ -122,7 +122,7 @@ def _pdf_snippet(path: str) -> Preview:
         text = (reader.pages[0].extract_text() or "").strip() if reader.pages else ""
         note = f"{len(reader.pages)} pages"
         if text:
-            return Preview(KIND_TEXT, os.path.basename(path), text=text[:2000], note=note)
+            return Preview(KIND_TEXT, os.path.basename(path), text=text[:6000], note=note)
         return _meta(path, note)
     except Exception:
         return _meta(path, "PDF (install poppler-utils to preview text)")
