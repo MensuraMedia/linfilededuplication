@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from pathlib import Path
@@ -16,6 +17,8 @@ from linfilededuplication import APP_ID, APP_NAME, __version__  # noqa: E402
 from linfilededuplication import logsetup  # noqa: E402
 from linfilededuplication.config.settings import Settings  # noqa: E402
 from linfilededuplication.i18n import _  # noqa: E402
+
+log = logging.getLogger("linfilededuplication.app")
 
 
 def data_path(*parts: str) -> str:
@@ -71,12 +74,19 @@ class DedupeApp(Adw.Application):
         self.tray = create_tray(self)
         if self.tray is not None:
             self.hold()                         # keep running in the tray when the window closes
+        log.info("startup complete: theme=%s, tray=%s, glossary=%d entries",
+                 self.settings.style, "on" if self.tray else "unavailable", len(self.glossary.entries))
 
     def do_activate(self) -> None:
         if self.window is None:
             from linfilededuplication.ui.window import MainWindow
             self.window = MainWindow(self)
         self.window.present()
+        log.info("window presented")
+
+    def do_shutdown(self) -> None:
+        log.info("shutting down cleanly")
+        Adw.Application.do_shutdown(self)
 
     def do_open(self, files, n_files, _hint) -> None:  # noqa: N802 (GTK vfunc name)
         self.activate()

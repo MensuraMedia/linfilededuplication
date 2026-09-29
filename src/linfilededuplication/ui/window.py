@@ -5,6 +5,7 @@ decoration layout (the default on GNOME and Cinnamon).
 """
 from __future__ import annotations
 
+import logging
 import time
 
 from gi.repository import Adw, GLib, Gio, Gtk
@@ -19,6 +20,7 @@ from linfilededuplication.ui.sidebar import Sidebar
 from linfilededuplication.ui.widgets.scan_spinner import RadarSpinner
 
 SCAN_MIN_SECONDS = 1.6      # minimum time the scanning indicator stays visible
+log = logging.getLogger("linfilededuplication.window")
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -83,8 +85,10 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_close(self, _win) -> bool:
         """With a tray icon, closing hides to the tray instead of quitting."""
         if getattr(self.app, "tray", None) is not None:
+            log.info("window closed -> hidden to tray")
             self.set_visible(False)
             return True                         # stop the default (destroy)
+        log.info("window closed -> quitting (no tray)")
         return False
 
     # --- navigation ------------------------------------------------------
@@ -136,6 +140,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.sidebar.set_count("results", 0)
         self.sidebar.set_running("scan", True)
         self.scan_spinner.start()
+        log.info("scan started: %s", _root)
 
     def _on_group_found(self, _c, _group) -> None:
         self._group_count += 1
@@ -151,6 +156,8 @@ class MainWindow(Adw.ApplicationWindow):
             self._scan_finished_ui(fin)
 
     def _scan_finished_ui(self, fin) -> None:
+        log.info("scan finished: groups=%d files=%d reclaimable=%d cancelled=%s (%.2fs)",
+                 fin.groups, fin.files_scanned, fin.reclaimable, fin.cancelled, fin.seconds)
         self.scan_spinner.stop()
         self.sidebar.set_running("scan", False)
         if not fin.cancelled and fin.groups:

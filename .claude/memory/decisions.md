@@ -18,3 +18,4 @@
 | 2026-09-29 | System tray via XApp.StatusIcon, not AppIndicator3 | AppIndicator3 is GTK3-only and cannot mix into a GTK4 process; XApp is GTK-agnostic and native on Mint/Cinnamon. Detected capability. |
 | 2026-09-29 | App icon is an original design (overlapping cards + accent check) | Avoids any third-party/brand icon; Phosphor (MIT) only for in-app symbolic glyphs. |
 | 2026-09-29 | Near-identical (SIMILAR) groups are review-only, never auto-removed | Unlike exact matches, similar files differ in content, so SpotCheck/confirmation is required. |
+| 2026-09-29 | App icon composed from local Phosphor iconography, not a custom drawing | House convention (docs/05-iconography.md §5.6): compose the app icon from the vendored Phosphor glyphs. |

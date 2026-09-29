@@ -6,6 +6,7 @@ having confirmed; protected paths are always refused.
 """
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +14,8 @@ from pathlib import Path
 from gi.repository import Gio
 
 from linfilededuplication.core.model import FileEntry
+
+log = logging.getLogger("linfilededuplication.actions")
 
 _PROTECTED = (
     str(Path.home()),                       # $HOME root itself (not its children)
@@ -50,6 +53,9 @@ def move_to_trash(entries: list[FileEntry]) -> ActionResult:
             res.freed += e.size
         except Exception as exc:
             res.errors.append(f"Could not trash {e.name}: {exc}")
+    log.info("move_to_trash: %d moved, %d bytes freed, %d errors", res.done, res.freed, len(res.errors))
+    for err in res.errors:
+        log.warning("trash: %s", err)
     return res
 
 
@@ -83,4 +89,7 @@ def hard_link(keeper: FileEntry, extras: list[FileEntry]) -> ActionResult:
             res.freed += e.size
         except OSError as exc:
             res.errors.append(f"Could not relink {e.name}: {exc}")
+    log.info("hard_link: %d linked, %d bytes freed, %d errors", res.done, res.freed, len(res.errors))
+    for err in res.errors:
+        log.warning("hard-link: %s", err)
     return res
