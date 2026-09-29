@@ -24,7 +24,7 @@ def create_tray(app):
         icon.set_tooltip_text(APP_NAME)
 
         menu = Gio.Menu()
-        menu.append(_("Open DedupeDash"), "app.present")
+        menu.append(_("Open LinFileDedup"), "app.present")
         menu.append(_("New scan"), "app.scan")
         menu.append(_("Quit"), "app.quit")
         popover = Gtk.PopoverMenu.new_from_model(menu)

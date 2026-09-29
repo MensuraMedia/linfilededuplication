@@ -34,7 +34,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.title_widget = Adw.WindowTitle(title=APP_NAME, subtitle="")
         header.set_title_widget(self.title_widget)
         menu = Gio.Menu()
-        menu.append(_("About DedupeDash"), "app.about")
+        menu.append(_("About LinFileDedup"), "app.about")
         menu.append(_("Quit"), "app.quit")
         menu_btn = Gtk.MenuButton(icon_name="app-app-menu-symbolic", menu_model=menu,
                                   tooltip_text=_("Main menu"))

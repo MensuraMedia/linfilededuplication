@@ -1,14 +1,14 @@
-# DedupeDash
+# LinFileDedup
 
 **Find and safely remove duplicate and near-duplicate files — with real care for images,
 backups, and your confidence before anything is deleted.**
 
-DedupeDash (`linfilededuplication`) is a native Linux desktop app for Debian 12/13 and Linux
+LinFileDedup (`linfilededuplication`) is a native Linux desktop app for Debian 12/13 and Linux
 Mint, built with **GTK 4 + libadwaita**. It finds exact duplicates, visually similar images,
 and near-identical documents; flags probable backups; and lets you reclaim space **safely** —
 nothing is changed until you review the groups and confirm, and removals go to Trash by default.
 
-![DedupeDash — Results](docs/screenshots/results.png)
+![LinFileDedup — Results](docs/screenshots/results.png)
 
 > Part of the MensuraMedia `lin-*` family of Linux utilities, built on the house
 > `gtk4-dashboard-template` pattern. Runs entirely locally — no accounts, no network, no telemetry.
@@ -18,7 +18,7 @@ nothing is changed until you review the groups and confirm, and removals go to T
 ## Table of contents
 
 - [Feature tour](#feature-tour)
-- [Everything DedupeDash does](#everything-dedupedash-does)
+- [Everything LinFileDedup does](#everything-dedupedash-does)
 - [Desktop integration](#desktop-integration)
 - [Install](#install)
 - [Usage](#usage)
@@ -61,7 +61,7 @@ Interactive design mockups (light and dark) live in
 
 ---
 
-## Everything DedupeDash does
+## Everything LinFileDedup does
 
 ### Matching engine
 
@@ -139,8 +139,8 @@ screen-reader labelled, responsive.
 
 ## Desktop integration
 
-- **Application launcher & menu item** — a `.desktop` entry installs DedupeDash into your
-  applications menu; it also registers for folders (open a folder "with DedupeDash").
+- **Application launcher & menu item** — a `.desktop` entry installs LinFileDedup into your
+  applications menu; it also registers for folders (open a folder "with LinFileDedup").
 - **App icon** — an original icon shipped in `hicolor` (scalable SVG + 16–256 px PNGs), used in
   the menu, the window, and **Alt-Tab** (via `StartupWMClass` / WM_CLASS matching).
 - **Panel / system-tray icon** — an optional `XApp.StatusIcon` (Mint, Cinnamon, and others):
@@ -261,7 +261,7 @@ SpotCheck synced-zoom and A/B difference view, and audio/video preview providers
 ## License
 
 Released under the **Creative Commons Attribution–NonCommercial 4.0 International License
-(CC BY-NC 4.0)**. You are welcome to use, copy, modify, and redistribute DedupeDash for any
+(CC BY-NC 4.0)**. You are welcome to use, copy, modify, and redistribute LinFileDedup for any
 non-commercial purpose, with attribution. **Commercial use requires prior written permission** —
 we're happy to talk; please reach out. Full terms in [`LICENSE.md`](LICENSE.md).
 

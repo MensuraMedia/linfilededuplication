@@ -1,4 +1,4 @@
-/* DedupeDash component styles. Colours come from libadwaita named colours, so light/dark
+/* LinFileDedup component styles. Colours come from libadwaita named colours, so light/dark
  * and the user's accent are handled automatically. Only app-* classes are styled. */
 
 .lfd-window { }

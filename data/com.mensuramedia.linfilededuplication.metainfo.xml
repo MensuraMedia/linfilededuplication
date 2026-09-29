@@ -3,14 +3,14 @@
   <id>com.mensuramedia.linfilededuplication</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>LicenseRef-CC-BY-NC-4.0</project_license>
-  <name>DedupeDash</name>
+  <name>LinFileDedup</name>
   <summary>Find and safely remove duplicate and near-duplicate files</summary>
   <developer id="com.mensuramedia">
     <name>MensuraMedia</name>
   </developer>
   <description>
     <p>
-      DedupeDash finds exact duplicate files and visually similar images across a folder,
+      LinFileDedup finds exact duplicate files and visually similar images across a folder,
       then lets you remove the extras safely. Nothing is changed until you review the
       duplicate groups and confirm; removals move to Trash by default and can be replaced
       with hard links instead.

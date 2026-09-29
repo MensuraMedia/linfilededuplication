@@ -1,6 +1,6 @@
-# DedupeDash — Concept & Technical Design
+# LinFileDedup — Concept & Technical Design
 
-**Project:** linfilededuplication (DedupeDash)
+**Project:** linfilededuplication (LinFileDedup)
 **Status:** P0 foundation complete; exact engine + image near-duplicates working
 **Target platform:** Debian 12/13 + Linux Mint
 **Foundation:** MensuraMedia `gtk4-dashboard-template`, ported to GTK 4 + libadwaita

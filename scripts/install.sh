@@ -17,6 +17,8 @@ fi
 SHARE="$PREFIX/share/$PKG"
 $SUDO mkdir -p "$SHARE" "$PREFIX/bin" "$PREFIX/share/applications" \
               "$PREFIX/share/metainfo" "$PREFIX/share/icons"
+# Clean previous payload so a reinstall never nests (cp -r into an existing dir).
+$SUDO rm -rf "$SHARE/src" "$SHARE/css" "$SHARE/icons" "$SHARE/glossary"
 $SUDO cp -r "$ROOT/src" "$SHARE/src"
 $SUDO cp -r "$ROOT/data/css" "$ROOT/data/icons" "$ROOT/data/glossary" "$SHARE/"
 $SUDO cp "$ROOT/data/$APPID.desktop" "$PREFIX/share/applications/"

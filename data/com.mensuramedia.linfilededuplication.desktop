@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Version=1.5
-Name=DedupeDash
+Name=LinFileDedup
 GenericName=Duplicate File Finder
 Comment=Find and safely remove duplicate and near-duplicate files
 Exec=linfilededuplication %F

@@ -116,7 +116,7 @@ class DedupeApp(Adw.Application):
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(prog="linfilededuplication",
-                                     description="DedupeDash - find and remove duplicate files")
+                                     description="LinFileDedup - find and remove duplicate files")
     parser.add_argument("paths", nargs="*", help="folder(s) to scan")
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {__version__}")
     parser.add_argument("--debug", action="store_true", help="verbose logging")

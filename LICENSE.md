@@ -1,6 +1,6 @@
 # License
 
-**DedupeDash (linfilededuplication)** is released under the
+**LinFileDedup (linfilededuplication)** is released under the
 **Creative Commons Attribution–NonCommercial 4.0 International License (CC BY‑NC 4.0)**.
 
 Copyright © 2026 MensuraMedia.
@@ -19,7 +19,7 @@ We ask only two things in return:
 1. **Attribution.** Please credit *MensuraMedia* and link back to this project, and indicate
    if you made changes. A simple, honest acknowledgement is all that is needed.
 2. **Non‑commercial use.** Commercial use is not permitted under this license without prior,
-   explicit written permission. If you would like to use DedupeDash — in whole or in part —
+   explicit written permission. If you would like to use LinFileDedup — in whole or in part —
    in a commercial product, service, or offering, we would be glad to talk; please reach out
    to arrange terms. We aim to be reasonable and accommodating.
 
@@ -45,4 +45,4 @@ conversation.
 
 To the extent permitted by law, the software is provided “as is”, without warranty of any kind.
 The authors are not liable for any claim, damages, or other liability arising from its use.
-Because DedupeDash can delete or relink files, please keep backups and use the dry‑run preview.
+Because LinFileDedup can delete or relink files, please keep backups and use the dry‑run preview.

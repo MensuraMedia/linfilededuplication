@@ -1,4 +1,4 @@
-<title>DedupeDash Mockups</title>
+<title>LinFileDedup Mockups</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cantarell:ital,wght@0,400;0,700;1,400&display=swap">
 <style>
   :root{
@@ -273,7 +273,7 @@
 
 <div class="wrap">
   <div class="masthead">
-    <h1>DedupeDash</h1>
+    <h1>LinFileDedup</h1>
     <span class="badge"><span class="swatch"></span>Design-stage mockups</span>
     <div class="toggle" role="group" aria-label="Preview theme">
       <button id="t-light" aria-pressed="false">Light</button>
@@ -292,7 +292,7 @@
     <div class="screen-tag"><span class="n">01</span><h2>Overview</h2><p>Scan roots, reclaimable space, recent runs</p></div>
     <div class="win-scroll"><div class="win">
       <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
-        <span class="t"><b>DedupeDash</b> — Overview</span></div>
+        <span class="t"><b>LinFileDedup</b> — Overview</span></div>
       <div class="body">
         <div class="app-sidebar" data-active="overview" data-status="idle"></div>
         <div class="content">
@@ -321,7 +321,7 @@
     <div class="screen-tag"><span class="n">02</span><h2>Scan</h2><p>Simple / Advanced tiers, options, live progress</p></div>
     <div class="win-scroll"><div class="win">
       <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
-        <span class="t"><b>DedupeDash</b> — Scanning ~/Pictures</span></div>
+        <span class="t"><b>LinFileDedup</b> — Scanning ~/Pictures</span></div>
       <div class="body">
         <div class="app-sidebar" data-active="scan" data-status="scanning" data-run="scan"></div>
         <div class="content">
@@ -360,7 +360,7 @@
     <div class="screen-tag"><span class="n">03</span><h2>Results</h2><p>Duplicate groups — exact and image near-duplicates, highest resolution kept</p></div>
     <div class="win-scroll"><div class="win">
       <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
-        <span class="t"><b>DedupeDash</b> — Results</span></div>
+        <span class="t"><b>LinFileDedup</b> — Results</span></div>
       <div class="body">
         <div class="app-sidebar" data-active="results" data-status="idle" data-count="41"></div>
         <div class="content">
@@ -418,7 +418,7 @@
     <div class="screen-tag"><span class="n">04</span><h2>Confirm removal</h2><p>Adw.AlertDialog — concrete counts, originals kept, recoverable</p></div>
     <div class="win-scroll"><div class="win">
       <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
-        <span class="t"><b>DedupeDash</b> — Results</span></div>
+        <span class="t"><b>LinFileDedup</b> — Results</span></div>
       <div class="dialog-stage">
         <div class="dialog">
           <div class="warn-ic"><svg><use href="#ic-trash"/></svg></div>
@@ -439,7 +439,7 @@
     <div class="screen-tag"><span class="n">05</span><h2>Settings — Advanced</h2><p>Matching thresholds, the keep-policy order, safety</p></div>
     <div class="win-scroll"><div class="win">
       <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
-        <span class="t"><b>DedupeDash</b> — Settings</span></div>
+        <span class="t"><b>LinFileDedup</b> — Settings</span></div>
       <div class="body">
         <div class="app-sidebar" data-active="settings" data-status="idle"></div>
         <div class="content">
@@ -502,7 +502,7 @@
   document.querySelectorAll('.app-sidebar').forEach(function(sb){
     var active=sb.getAttribute('data-active'), run=sb.getAttribute('data-run'),
         count=sb.getAttribute('data-count'), status=sb.getAttribute('data-status')||'idle';
-    var html='<div class="logo"><span class="mark"><svg viewBox="0 0 24 24"><use href="#ic-results"/></svg></span><span class="name">DedupeDash</span></div><div class="nav">';
+    var html='<div class="logo"><span class="mark"><svg viewBox="0 0 24 24"><use href="#ic-results"/></svg></span><span class="name">LinFileDedup</span></div><div class="nav">';
     NAV.forEach(function(it){
       var on=it[0]===active;
       var tail='';

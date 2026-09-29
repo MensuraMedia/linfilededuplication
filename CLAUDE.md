@@ -1,4 +1,4 @@
-# CLAUDE.md — linfilededuplication (DedupeDash)
+# CLAUDE.md — linfilededuplication (LinFileDedup)
 
 Native Linux desktop app that finds and safely removes duplicate and near-duplicate files.
 GTK 4 + libadwaita, Python / PyGObject. Built from the MensuraMedia `gtk4-dashboard-template`
@@ -42,7 +42,7 @@ Rules of the house:
 ## Conventions
 
 - App id `com.mensuramedia.linfilededuplication`; package `linfilededuplication`; visible
-  name **DedupeDash**; GObject prefix `Lfd`.
+  name **LinFileDedup**; GObject prefix `Lfd`.
 - Icons: embedded Phosphor `-symbolic` SVGs under `data/icons/`, named `app-<id>-symbolic`
   (+ `-active` for nav). Never rely on the system icon theme.
 - Wrap user-visible strings in `_()` (`i18n.py`).
