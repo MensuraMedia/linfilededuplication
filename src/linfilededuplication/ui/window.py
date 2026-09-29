@@ -6,9 +6,8 @@ decoration layout (the default on GNOME and Cinnamon).
 from __future__ import annotations
 
 import logging
-import time
 
-from gi.repository import Adw, GLib, Gio, Gtk
+from gi.repository import Adw, Gio, Gtk
 
 from linfilededuplication import APP_NAME
 from linfilededuplication.config.layout import (
@@ -17,9 +16,7 @@ from linfilededuplication.i18n import _
 from linfilededuplication.services.scan_controller import ScanController
 from linfilededuplication.ui.pages import DEFAULT_PAGE, PAGES
 from linfilededuplication.ui.sidebar import Sidebar
-from linfilededuplication.ui.widgets.scan_spinner import RadarSpinner
 
-SCAN_MIN_SECONDS = 1.6      # minimum time the scanning indicator stays visible
 log = logging.getLogger("linfilededuplication.window")
 
 
@@ -46,14 +43,12 @@ class MainWindow(Adw.ApplicationWindow):
         menu_btn = Gtk.MenuButton(icon_name="app-app-menu-symbolic", menu_model=menu,
                                   tooltip_text=_("Main menu"))
         header.pack_end(menu_btn)
-        self.scan_spinner = RadarSpinner(24)    # shown in the header while a scan runs
-        self.scan_spinner.set_tooltip_text(_("Scanning…"))
-        header.pack_start(self.scan_spinner)
 
         # sidebar + stack
         self.sidebar = Sidebar(PAGES)
         self.sidebar.connect("page-changed", lambda _s, pid: self.show_page(pid))
         self.stack = Gtk.Stack(hexpand=True, vexpand=True)
+        self.stack.add_css_class("app-content")
         self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         self.stack.set_transition_duration(120)
 
@@ -136,10 +131,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_scan_started(self, _c, _root: str) -> None:
         self._group_count = 0
-        self._scan_start = time.monotonic()
         self.sidebar.set_count("results", 0)
         self.sidebar.set_running("scan", True)
-        self.scan_spinner.start()
         log.info("scan started: %s", _root)
 
     def _on_group_found(self, _c, _group) -> None:
@@ -147,18 +140,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.sidebar.set_count("results", self._group_count)
 
     def _on_scan_finished(self, _c, fin) -> None:
-        # Keep the scanning indicator visible at least SCAN_MIN_SECONDS, even on a fast scan.
-        elapsed = time.monotonic() - getattr(self, "_scan_start", 0.0)
-        remaining = SCAN_MIN_SECONDS - elapsed
-        if remaining > 0:
-            GLib.timeout_add(int(remaining * 1000), lambda: (self._scan_finished_ui(fin), False)[1])
-        else:
-            self._scan_finished_ui(fin)
-
-    def _scan_finished_ui(self, fin) -> None:
         log.info("scan finished: groups=%d files=%d reclaimable=%d cancelled=%s (%.2fs)",
                  fin.groups, fin.files_scanned, fin.reclaimable, fin.cancelled, fin.seconds)
-        self.scan_spinner.stop()
         self.sidebar.set_running("scan", False)
         if not fin.cancelled and fin.groups:
             self.toast(_("Found {n} duplicate groups").format(n=fin.groups))

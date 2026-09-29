@@ -3,6 +3,9 @@
 
 .lfd-window { }
 
+/* main content area: darker than the sidebar for clear separation */
+.app-content { background-color: @view_bg_color; }
+
 /* sidebar */
 .app-sidebar {
   background-color: @sidebar_bg_color;
@@ -20,7 +23,7 @@
   font-size: 0.72em; font-weight: 800; letter-spacing: 1px;
   margin: 6px 16px 2px; opacity: 0.6;
 }
-.app-footer { border-top: 1px solid alpha(@window_fg_color, 0.12); padding: 8px 16px 4px; margin-top: 4px; }
+.app-footer { border-top: 1px solid alpha(@window_fg_color, 0.12); padding: 8px 16px 4px; margin-top: 4px; margin-bottom: 12px; }
 
 .app-live-dot { min-width: 8px; min-height: 8px; border-radius: 50%; background-color: @success_color; margin: 0 2px; }
 @keyframes app-breathe { 0% { opacity: 0.25; } 50% { opacity: 1; } 100% { opacity: 0.25; } }
@@ -66,7 +69,11 @@
 
 /* results selection markers */
 .app-del-check check:checked { background-color: @error_color; border-color: @error_color; color: #ffffff; }
+.app-del-check check { border-color: @error_color; }
 .app-keep-check { color: @success_color; }
+.app-keep-text { color: @success_color; font-weight: 700; }
+.app-del-text { color: @error_color; font-weight: 700; }
+.app-del-name { color: @error_color; }
 
 /* badges */
 .app-kind-exact, .app-kind-image, .app-keepbadge {

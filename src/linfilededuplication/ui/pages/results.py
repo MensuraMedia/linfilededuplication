@@ -1,7 +1,9 @@
 """Results: duplicate groups with previews, selection, and safe actions."""
 from __future__ import annotations
 
-from gi.repository import Adw, Gtk
+import time
+
+from gi.repository import Adw, GLib, Gtk
 
 from linfilededuplication.core.model import KIND_IMAGE, KIND_SIMILAR, DuplicateGroup, FileEntry
 from linfilededuplication.core.units import human_bytes
@@ -10,17 +12,25 @@ from linfilededuplication.services import actions
 from linfilededuplication.ui.pages.base import BasePage
 from linfilededuplication.ui.widgets.common import badge, icon
 from linfilededuplication.ui.widgets.info_hint import InfoHint
+from linfilededuplication.ui.widgets.scan_spinner import RadarSpinner
 
 
 class ResultsPage(BasePage):
     page_id = "results"
     title = _("Results")
     clamp_max = 0           # fill the window for the spreadsheet-like file list
+    MIN_SPIN = 1.6          # keep the radar visible at least this long
 
     def build_content(self) -> None:
         self._groups: list[dict] = []       # {group, keeper, checks:[(CheckButton, FileEntry)], widget}
 
-        self.add_heading(_("Results"), _("Run a scan to see duplicate groups here."))
+        self.add_heading(_("Results"))
+        spin_box = Gtk.Box(halign=Gtk.Align.CENTER)
+        spin_box.set_margin_top(4)
+        spin_box.set_margin_bottom(4)
+        self.spinner = RadarSpinner(100)        # shown below the title while scanning
+        spin_box.append(self.spinner)
+        self.add(spin_box)
         self.summary = Gtk.Label(label="", xalign=0.0)
         self.summary.add_css_class("app-dim")
         self.add(self.summary)
@@ -61,8 +71,10 @@ class ResultsPage(BasePage):
             self.groups_box.remove(child)
             child = nxt
         self._groups.clear()
-        self.summary.set_text(_("Scanning…"))
+        self.summary.set_text("")               # the radar shows scanning; no text needed
         self.action_bar.set_visible(False)
+        self._scan_start = time.monotonic()
+        self.spinner.start()
 
     def _on_group(self, _c, group: DuplicateGroup) -> None:
         record = {"group": group, "keeper": group.keeper, "checks": []}
@@ -73,6 +85,12 @@ class ResultsPage(BasePage):
         self._refresh_selection()
 
     def _on_finished(self, _c, fin) -> None:
+        elapsed = time.monotonic() - getattr(self, "_scan_start", 0.0)
+        remaining = self.MIN_SPIN - elapsed
+        if remaining > 0:
+            GLib.timeout_add(int(remaining * 1000), lambda: (self.spinner.stop(), False)[1])
+        else:
+            self.spinner.stop()
         if not self._groups:
             self.summary.set_text(_("No duplicates found."))
             return
@@ -117,12 +135,13 @@ class ResultsPage(BasePage):
         # size groups align the Name and Size columns across rows (spreadsheet style)
         name_sg = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         size_sg = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
+        sel_sg = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         for f in group.files:
-            card.append(self._file_row(f, group, record, name_sg, size_sg))
+            card.append(self._file_row(f, group, record, name_sg, size_sg, sel_sg))
         return card
 
     def _file_row(self, f: FileEntry, group: DuplicateGroup, record: dict,
-                  name_sg: Gtk.SizeGroup, size_sg: Gtk.SizeGroup) -> Gtk.Box:
+                  name_sg: Gtk.SizeGroup, size_sg: Gtk.SizeGroup, sel_sg: Gtk.SizeGroup) -> Gtk.Box:
         row = Gtk.Box(spacing=18)
         row.add_css_class("app-file-row")
         if f.keeper:
@@ -134,6 +153,8 @@ class ResultsPage(BasePage):
         name = Gtk.Label(label=f.name, xalign=0.0)
         name.set_ellipsize(3)                # PANGO_ELLIPSIZE_END
         name.set_max_width_chars(46)
+        if not f.keeper:
+            name.add_css_class("app-del-name")   # the file marked for deletion reads red
         namecell.append(name)
         if f.is_backup:
             namecell.append(badge(_("Newest") if f.is_newest else _("Older"), "app-keepbadge"))
@@ -155,14 +176,20 @@ class ResultsPage(BasePage):
         path.set_tooltip_text(f.path)
         row.append(path)
 
-        # column 4: keep (green circle) or remove (red check)
+        # column 4: "Keep" + green circle, or "Delete" + red check (aligned across rows)
+        sel = Gtk.Box(spacing=8, halign=Gtk.Align.END)
+        sel.set_valign(Gtk.Align.CENTER)
         if f.keeper:
-            keep = icon("app-status-success-symbolic", 20)
-            keep.add_css_class("app-keep-check")
-            keep.set_tooltip_text(_("Kept"))
-            keep.set_valign(Gtk.Align.CENTER)
-            row.append(keep)
+            lbl = Gtk.Label(label=_("Keep"))
+            lbl.add_css_class("app-keep-text")
+            marker = icon("app-status-success-symbolic", 20)
+            marker.add_css_class("app-keep-check")
+            marker.set_tooltip_text(_("Kept"))
+            sel.append(lbl)
+            sel.append(marker)
         else:
+            lbl = Gtk.Label(label=_("Delete"))
+            lbl.add_css_class("app-del-text")
             check = Gtk.CheckButton()
             check.add_css_class("app-del-check")
             check.set_active(True)
@@ -170,7 +197,10 @@ class ResultsPage(BasePage):
             check.set_tooltip_text(_("Marked for removal"))
             check.connect("toggled", lambda _c: self._refresh_selection())
             record["checks"].append((check, f))
-            row.append(check)
+            sel.append(lbl)
+            sel.append(check)
+        sel_sg.add_widget(sel)
+        row.append(sel)
         return row
 
     def _thumb(self, f: FileEntry) -> Gtk.Widget:
