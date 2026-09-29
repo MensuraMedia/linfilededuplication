@@ -17,3 +17,5 @@ Append-only. Format: `| ISO-8601 datetime | description |`.
 | 2026-09-29 | P6 Advanced Scan: content-defined chunking similarity (`core/chunking.py`), fuzzy hashing (`core/fuzzy.py`, TLSH/ssdeep), metadata/filename signals (`core/metadata.py`); new SIMILAR group kind wired into the Advanced tier. |
 | 2026-09-29 | Desktop integration: original app icon (scalable SVG + 16–256px PNGs), window/Alt-Tab icon + WM_CLASS, optional XApp system-tray icon with close-to-tray (`services/tray.py`), present/scan app actions. |
 | 2026-09-29 | Packaging & ops: `.deb` includes app icons + glossary; Recommends gir1.2-xapp-1.0, Suggests python3-tlsh/poppler-utils; `scripts/backup.sh` local backup; comprehensive README. 29 tests passing. |
+| 2026-09-29 | Fix: installed launcher wrote by install.sh/build-deb.sh no longer breaks (the sed rewrote the checkout sentinel); write a clean launcher directly. Verified via user install + live scan. |
+| 2026-09-29 | Backup policy tie-break: within a close time window (`BACKUP_CLOSE_SECONDS`), keep the non-backup original over a marginally newer `.bak`. 30 tests passing. |

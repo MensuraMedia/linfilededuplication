@@ -1,6 +1,8 @@
 """Keep/delete policy: choose which file in a group to keep. Pure.
 
 Default order (re-orderable in Advanced Scan):
+  0. In a backup group: newest generation, but a non-backup original beats a
+     marginally newer .bak (within BACKUP_CLOSE_SECONDS)
   1. Highest resolution (width x height) -- images only
   2. Largest file size
   3. Non-derived filename (no copy / -1 / resized / thumb)
@@ -14,6 +16,10 @@ from __future__ import annotations
 import re
 
 from linfilededuplication.core.model import KIND_IMAGE, DuplicateGroup, FileEntry
+
+# Backup files whose effective dates fall within this window count as the same generation,
+# so the non-backup original is kept rather than a marginally newer .bak.
+BACKUP_CLOSE_SECONDS = 300
 
 # A derived copy adds a duplicate marker to an otherwise complete name. Match those markers
 # only -- never a bare "name_1234" (camera files like IMG_2381 are not derived).
@@ -29,8 +35,11 @@ def _is_derived(name: str) -> bool:
 def _score(f: FileEntry, is_image: bool, preferred: list[str], backup_mode: bool) -> tuple:
     """Higher tuple sorts first (the keeper). Mirrors the documented order."""
     in_preferred = any(f.path.startswith(p) for p in preferred)
+    date_bucket = int(f.effective_date // BACKUP_CLOSE_SECONDS) if backup_mode else 0
+    non_backup = (0 if f.is_backup else 1) if backup_mode else 0
     return (
-        f.effective_date if backup_mode else 0,  # 0. newest backup wins (backup groups only)
+        date_bucket,                        # 0a. newer backup generation wins...
+        non_backup,                         # 0b. ...but within a close window keep the original
         f.pixels if is_image else 0,        # 1. resolution (images)
         f.size,                             # 2. size
         0 if _is_derived(f.name) else 1,    # 3. original name beats derived
