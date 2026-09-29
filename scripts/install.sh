@@ -23,9 +23,13 @@ $SUDO cp "$ROOT/data/$APPID.desktop" "$PREFIX/share/applications/"
 $SUDO cp "$ROOT/data/$APPID.metainfo.xml" "$PREFIX/share/metainfo/"
 $SUDO cp -r "$ROOT/data/icons/hicolor" "$PREFIX/share/icons/"
 
-$SUDO sed "s|__ROOT__|$SHARE|" "$ROOT/bin/$PKG" | \
-  $SUDO tee "$PREFIX/bin/$PKG" >/dev/null
-$SUDO sed -i "s|/usr/share/linfilededuplication|$SHARE|" "$PREFIX/bin/$PKG"
+# Write a clean installed launcher (no sentinel to accidentally rewrite).
+$SUDO tee "$PREFIX/bin/$PKG" >/dev/null <<LAUNCH
+#!/bin/sh
+export PYTHONPATH="$SHARE/src\${PYTHONPATH:+:\$PYTHONPATH}"
+export LINFILEDEDUPLICATION_DATA_DIR="$SHARE"
+exec python3 -m $PKG "\$@"
+LAUNCH
 $SUDO chmod 755 "$PREFIX/bin/$PKG"
 
 which update-desktop-database >/dev/null 2>&1 && $SUDO update-desktop-database -q "$PREFIX/share/applications" || true

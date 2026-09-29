@@ -25,9 +25,13 @@ cp data/$APPID.metainfo.xml "$DEST/share/metainfo/"
 cp -r data/icons/hicolor "$DEST/share/icons/hicolor" 2>/dev/null || \
   { mkdir -p "$DEST/share/icons"; cp -r data/icons/hicolor "$DEST/share/icons/"; }
 
-# Launcher (rewrite __ROOT__)
-sed "s|__ROOT__|/usr/lib/$PKG|" bin/$PKG > "$DEST/bin/$PKG"
-sed -i "s|/usr/share/linfilededuplication|/usr/share/$PKG|" "$DEST/bin/$PKG"
+# Launcher (clean installed form, no sentinel to accidentally rewrite)
+cat > "$DEST/bin/$PKG" <<LAUNCH
+#!/bin/sh
+export PYTHONPATH="/usr/lib/$PKG/src\${PYTHONPATH:+:\$PYTHONPATH}"
+export LINFILEDEDUPLICATION_DATA_DIR="/usr/share/$PKG"
+exec python3 -m $PKG "\$@"
+LAUNCH
 chmod 755 "$DEST/bin/$PKG"
 
 cp README.md "$DEST/share/doc/$PKG/" 2>/dev/null || true
