@@ -62,8 +62,20 @@ Rules of the house:
 - `core/glossary.py` + `data/glossary/en.json` — terms/FAQ for the Knowledge page and InfoHint.
 - `ui/widgets/info_hint.py`, `ui/pages/knowledge.py`, `ui/pages/spotcheck.py`.
 
+## Advanced Scan (P6) & desktop integration
+
+- `core/chunking.py` — content-defined anchor sampling + Jaccard similarity (SIMILAR groups).
+- `core/fuzzy.py` — TLSH/ssdeep fuzzy hashing (optional, detected).
+- `core/metadata.py` — EXIF + filename similarity.
+- `services/tray.py` — optional XApp system-tray icon; app actions `present`/`scan`; window
+  closes to tray when a tray exists (`window._on_close`, `app.hold()`).
+- App icon: original `data/icons/hicolor/**/apps/<app-id>.{svg,png}`; WM_CLASS via
+  `GLib.set_prgname(APP_ID)` + `Gtk.Window.set_default_icon_name(APP_ID)`.
+- `scripts/backup.sh` — timestamped local backups to `~/backups/`.
+
 ## Status
 
-P0 foundation + exact engine + image near-duplicates + Simple Scan UI + safe actions, plus
-SpotCheck, backup awareness, scan exclusions, info icons and the Knowledge page. 25 tests
-passing. Roadmap in `docs/CONCEPT.md`; feature notes in `docs/SPOTCHECK.md`.
+P0–P6 complete: exact + image + advanced (chunking/fuzzy/metadata) engine, SpotCheck, backups,
+exclusions, info icons, Knowledge page, and full desktop integration (launcher, menu, tray,
+Alt-Tab, icon, `.deb`). 29 tests passing. Roadmap in `docs/CONCEPT.md`; feature notes in
+`docs/SPOTCHECK.md`.

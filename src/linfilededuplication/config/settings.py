@@ -31,6 +31,7 @@ class Settings:
     dry_run: bool = True
     detect_backups: bool = True
     keep_newest_backup: bool = True
+    similar_threshold: float = 0.55
     exclusions: list[str] = field(default_factory=lambda: list(DEFAULT_ON))
 
     @classmethod

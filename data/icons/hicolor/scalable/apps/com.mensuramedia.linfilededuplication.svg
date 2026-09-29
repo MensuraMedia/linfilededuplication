@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f2f6fc"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a9bf0"/>
+      <stop offset="1" stop-color="#3584e4"/>
+    </linearGradient>
+  </defs>
+  <!-- back card (the duplicate), tilted -->
+  <g transform="rotate(-9 128 128)">
+    <rect x="60" y="48" width="118" height="150" rx="16" fill="#cfe0fa"/>
+  </g>
+  <!-- front card -->
+  <rect x="78" y="58" width="118" height="150" rx="16" fill="url(#card)" stroke="#c7d3e6" stroke-width="2"/>
+  <!-- lines of content -->
+  <g fill="#9fb2cc">
+    <rect x="96" y="82" width="82" height="10" rx="5"/>
+    <rect x="96" y="104" width="82" height="10" rx="5"/>
+    <rect x="96" y="126" width="58" height="10" rx="5"/>
+  </g>
+  <!-- accent check badge -->
+  <circle cx="176" cy="178" r="40" fill="url(#badge)"/>
+  <path d="M158 178 l13 13 l24 -26" fill="none" stroke="#ffffff" stroke-width="10"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -18,7 +18,7 @@ SHARE="$PREFIX/share/$PKG"
 $SUDO mkdir -p "$SHARE" "$PREFIX/bin" "$PREFIX/share/applications" \
               "$PREFIX/share/metainfo" "$PREFIX/share/icons"
 $SUDO cp -r "$ROOT/src" "$SHARE/src"
-$SUDO cp -r "$ROOT/data/css" "$ROOT/data/icons" "$SHARE/"
+$SUDO cp -r "$ROOT/data/css" "$ROOT/data/icons" "$ROOT/data/glossary" "$SHARE/"
 $SUDO cp "$ROOT/data/$APPID.desktop" "$PREFIX/share/applications/"
 $SUDO cp "$ROOT/data/$APPID.metainfo.xml" "$PREFIX/share/metainfo/"
 $SUDO cp -r "$ROOT/data/icons/hicolor" "$PREFIX/share/icons/"

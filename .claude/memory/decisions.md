@@ -14,3 +14,7 @@
 | 2026-09-29 | Preview providers are pure, read-only, argv-only, budgeted | Never execute a file; safe snippets for SpotCheck; graceful fallback when a tool is absent. |
 | 2026-09-29 | One glossary as the single source for InfoHint copy and the Knowledge page | A term is defined once; a test asserts every InfoHint key resolves. |
 | 2026-09-29 | SpotCheck is an Adw.Dialog opened from Results | Keeps selection context; a gate that never deletes on its own. |
+| 2026-09-29 | Advanced similarity uses content-defined anchor sampling (gear rolling hash) + Jaccard | Shift-resistant to edits/insertions; bounded to smallish files for pure-Python performance. |
+| 2026-09-29 | System tray via XApp.StatusIcon, not AppIndicator3 | AppIndicator3 is GTK3-only and cannot mix into a GTK4 process; XApp is GTK-agnostic and native on Mint/Cinnamon. Detected capability. |
+| 2026-09-29 | App icon is an original design (overlapping cards + accent check) | Avoids any third-party/brand icon; Phosphor (MIT) only for in-app symbolic glyphs. |
+| 2026-09-29 | Near-identical (SIMILAR) groups are review-only, never auto-removed | Unlike exact matches, similar files differ in content, so SpotCheck/confirmation is required. |

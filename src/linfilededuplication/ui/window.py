@@ -68,8 +68,16 @@ class MainWindow(Adw.ApplicationWindow):
         self.controller.connect("scan-started", self._on_scan_started)
         self.controller.connect("group-found", self._on_group_found)
         self.controller.connect("scan-finished", self._on_scan_finished)
+        self.connect("close-request", self._on_close)
 
         self.show_page(DEFAULT_PAGE)
+
+    def _on_close(self, _win) -> bool:
+        """With a tray icon, closing hides to the tray instead of quitting."""
+        if getattr(self.app, "tray", None) is not None:
+            self.set_visible(False)
+            return True                         # stop the default (destroy)
+        return False
 
     # --- navigation ------------------------------------------------------
     def show_page(self, page_id: str) -> None:

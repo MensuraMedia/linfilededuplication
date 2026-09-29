@@ -22,8 +22,11 @@ class ScanOptions:
     keep_newest_backup: bool = True   # in a backup group, keep the newest
     exclusions: list[str] = field(default_factory=list)   # exclusion preset keys
     exclude: list[str] = field(default_factory=list)      # custom glob patterns
-    # Advanced-only signals (wired in later phases):
-    fuzzy: bool = False
+    # Advanced-tier signals:
+    advanced_similar: bool = False    # find near-identical content (chunking + fuzzy)
+    similar_threshold: float = 0.55   # min chunk-overlap (0..1) for a similar group
+    fuzzy: bool = True                # use fuzzy hashing when available
+    fuzzy_distance: int = 80          # max fuzzy distance for a similar group
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

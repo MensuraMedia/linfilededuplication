@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 KIND_EXACT = "exact"
 KIND_IMAGE = "image"
+KIND_SIMILAR = "similar"        # advanced: near-identical content (chunking / fuzzy)
 
 
 @dataclass

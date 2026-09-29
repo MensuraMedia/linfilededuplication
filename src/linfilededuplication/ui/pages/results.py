@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from gi.repository import Adw, Gtk
 
-from linfilededuplication.core.model import KIND_IMAGE, DuplicateGroup, FileEntry
+from linfilededuplication.core.model import KIND_IMAGE, KIND_SIMILAR, DuplicateGroup, FileEntry
 from linfilededuplication.core.units import human_bytes
 from linfilededuplication.i18n import _
 from linfilededuplication.services import actions
@@ -89,6 +89,8 @@ class ResultsPage(BasePage):
         header.add_css_class("app-group-header")
         if group.kind == KIND_IMAGE:
             header.append(badge(_("IMAGES · Δ{d}").format(d=group.distance), "app-kind-image"))
+        elif group.kind == KIND_SIMILAR:
+            header.append(badge(_("SIMILAR · {d}%").format(d=group.distance), "app-kind-similar"))
         else:
             header.append(badge(_("EXACT · SHA-256"), "app-kind-exact"))
         header.append(InfoHint(self.window, "match-kind"))

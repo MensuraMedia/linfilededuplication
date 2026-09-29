@@ -114,6 +114,8 @@ class ScanPage(BasePage):
             keep_newest_backup=s.keep_newest_backup,
             exclusions=list(s.exclusions),
             exclude=list(getattr(s, "custom_excludes", [])),
+            advanced_similar=(self.tier == TIER_ADVANCED),
+            similar_threshold=s.similar_threshold,
         )
 
     def _on_run_clicked(self, _btn) -> None:

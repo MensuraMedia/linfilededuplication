@@ -70,4 +70,5 @@
 }
 .app-kind-exact { background-color: alpha(@accent_bg_color, 0.18); color: @accent_bg_color; }
 .app-kind-image { background-color: alpha(@success_color, 0.20); color: @success_color; }
+.app-kind-similar { background-color: alpha(@warning_color, 0.22); color: @warning_color; }
 .app-keepbadge { background-color: alpha(@accent_bg_color, 0.16); color: @accent_bg_color; border-radius: 999px; }

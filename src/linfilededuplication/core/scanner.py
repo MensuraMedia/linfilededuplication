@@ -13,7 +13,8 @@ import time
 from collections import defaultdict
 from typing import Callable
 
-from linfilededuplication.core import backup_detect, events, exclusions, hashers, image_perceptual, policy
+from linfilededuplication.core import (
+    backup_detect, chunking, events, exclusions, fuzzy, hashers, image_perceptual, policy)
 from linfilededuplication.core.model import KIND_EXACT, DuplicateGroup, FileEntry
 from linfilededuplication.core.options import ScanOptions
 
@@ -134,6 +135,25 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
                 policy.rank(grp, keep_newest=opts.keep_newest_backup)
                 emit(events.GroupFound(grp))
             groups = groups + img_groups
+
+    if opts.advanced_similar:
+        grouped = {f.path for g in groups for f in g.files}
+        remaining = [e for e in entries if e.path not in grouped and not e.is_image]
+        fz: list = []
+        if opts.fuzzy and fuzzy.HAVE_FUZZY:
+            fz = fuzzy.find_fuzzy_groups(remaining, opts.fuzzy_distance, emit, cancel)
+        elif opts.fuzzy and not fuzzy.HAVE_FUZZY:
+            notes.append("Install python3-tlsh for fuzzy matching of edited files.")
+        for grp in fz:
+            grouped.update(f.path for f in grp.files)
+        remaining2 = [e for e in remaining if e.path not in grouped]
+        ch = chunking.find_similar_groups(remaining2, opts.similar_threshold, emit, cancel)
+        for grp in fz + ch:
+            if opts.detect_backups:
+                backup_detect.analyze_group(grp)
+            policy.rank(grp, keep_newest=opts.keep_newest_backup)
+            emit(events.GroupFound(grp))
+        groups = groups + fz + ch
 
     cancelled = cancel is not None and cancel.is_set()
     fin = events.Finished(

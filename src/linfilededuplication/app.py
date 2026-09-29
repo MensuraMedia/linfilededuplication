@@ -41,8 +41,10 @@ class DedupeApp(Adw.Application):
             flags |= Gio.ApplicationFlags.NON_UNIQUE
         super().__init__(application_id=APP_ID, flags=flags)
         GLib.set_application_name(APP_NAME)
+        GLib.set_prgname(APP_ID)            # WM_CLASS for Alt-Tab / taskbar matching
         self.settings = Settings.load()
         self.window: Gtk.ApplicationWindow | None = None
+        self.tray = None
 
     # --- lifecycle -------------------------------------------------------
     def do_startup(self) -> None:
@@ -53,7 +55,8 @@ class DedupeApp(Adw.Application):
         self.theme.apply(self.settings.style)
         from linfilededuplication.core.glossary import Glossary
         self.glossary = Glossary.load(data_path("glossary", "en.json"))
-        for name, cb in (("quit", lambda *_: self.quit()), ("about", self._about)):
+        for name, cb in (("quit", lambda *_: self.quit()), ("about", self._about),
+                         ("present", lambda *_: self._present()), ("scan", lambda *_: self._scan())):
             act = Gio.SimpleAction.new(name, None)
             act.connect("activate", cb)
             self.add_action(act)
@@ -63,6 +66,11 @@ class DedupeApp(Adw.Application):
         self.set_accels_for_action("app.quit", ["<Control>q"])
         for i in range(9):
             self.set_accels_for_action(f"app.page({i})", [f"<Control>{i + 1}"])
+
+        from linfilededuplication.services.tray import create_tray
+        self.tray = create_tray(self)
+        if self.tray is not None:
+            self.hold()                         # keep running in the tray when the window closes
 
     def do_activate(self) -> None:
         if self.window is None:
@@ -80,6 +88,19 @@ class DedupeApp(Adw.Application):
         display = Gdk.Display.get_default()
         if display is not None:
             Gtk.IconTheme.get_for_display(display).add_search_path(data_path("icons"))
+        Gtk.Window.set_default_icon_name(APP_ID)    # window / Alt-Tab icon
+
+    def _present(self) -> None:
+        if self.window is None:
+            self.activate()
+        else:
+            self.window.set_visible(True)
+            self.window.present()
+
+    def _scan(self) -> None:
+        self._present()
+        if self.window is not None:
+            self.window.show_page("scan")
 
     def _about(self, *_a: object) -> None:
         about = Adw.AboutDialog(
