@@ -193,6 +193,11 @@ scripts/uninstall.sh          # remove
    to compare content, and check the **Probable backup** / **Newest / Older** markers.
 4. Choose **Move to Trash** or **Hard-link**, confirm, and reclaim the space.
 
+While a scan runs, a **radar-sweep** indicator appears in the header bar — kept visible for a
+moment even on a sub-second scan, so you always see that work happened:
+
+![Scanning indicator](docs/screenshots/scan-radar.gif)
+
 Tune matching, backups, safety, and **Scan scope** in **Settings**. Hover any `(i)` for help,
 or open **Knowledge** to search terms.
 

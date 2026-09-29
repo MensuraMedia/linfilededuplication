@@ -5,7 +5,9 @@ decoration layout (the default on GNOME and Cinnamon).
 """
 from __future__ import annotations
 
-from gi.repository import Adw, Gio, Gtk
+import time
+
+from gi.repository import Adw, GLib, Gio, Gtk
 
 from linfilededuplication import APP_NAME
 from linfilededuplication.config.layout import (
@@ -14,6 +16,9 @@ from linfilededuplication.i18n import _
 from linfilededuplication.services.scan_controller import ScanController
 from linfilededuplication.ui.pages import DEFAULT_PAGE, PAGES
 from linfilededuplication.ui.sidebar import Sidebar
+from linfilededuplication.ui.widgets.scan_spinner import RadarSpinner
+
+SCAN_MIN_SECONDS = 1.6      # minimum time the scanning indicator stays visible
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -39,6 +44,9 @@ class MainWindow(Adw.ApplicationWindow):
         menu_btn = Gtk.MenuButton(icon_name="app-app-menu-symbolic", menu_model=menu,
                                   tooltip_text=_("Main menu"))
         header.pack_end(menu_btn)
+        self.scan_spinner = RadarSpinner(24)    # shown in the header while a scan runs
+        self.scan_spinner.set_tooltip_text(_("Scanning…"))
+        header.pack_start(self.scan_spinner)
 
         # sidebar + stack
         self.sidebar = Sidebar(PAGES)
@@ -124,14 +132,26 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_scan_started(self, _c, _root: str) -> None:
         self._group_count = 0
+        self._scan_start = time.monotonic()
         self.sidebar.set_count("results", 0)
         self.sidebar.set_running("scan", True)
+        self.scan_spinner.start()
 
     def _on_group_found(self, _c, _group) -> None:
         self._group_count += 1
         self.sidebar.set_count("results", self._group_count)
 
     def _on_scan_finished(self, _c, fin) -> None:
+        # Keep the scanning indicator visible at least SCAN_MIN_SECONDS, even on a fast scan.
+        elapsed = time.monotonic() - getattr(self, "_scan_start", 0.0)
+        remaining = SCAN_MIN_SECONDS - elapsed
+        if remaining > 0:
+            GLib.timeout_add(int(remaining * 1000), lambda: (self._scan_finished_ui(fin), False)[1])
+        else:
+            self._scan_finished_ui(fin)
+
+    def _scan_finished_ui(self, fin) -> None:
+        self.scan_spinner.stop()
         self.sidebar.set_running("scan", False)
         if not fin.cancelled and fin.groups:
             self.toast(_("Found {n} duplicate groups").format(n=fin.groups))
