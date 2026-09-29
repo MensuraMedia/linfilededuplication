@@ -22,3 +22,4 @@ Append-only. Format: `| ISO-8601 datetime | description |`.
 | 2026-09-29 | Renamed visible app to LinFileDedup (uniform with the lin-* series); fixed install.sh nesting src on reinstall; re-captured screenshots. |
 | 2026-09-29 | Scanning indicator: a live radar-sweep header widget (`ui/widgets/scan_spinner.py`, Cairo, accent-coloured, theme-aware) shown while a scan runs, kept visible ≥ `SCAN_MIN_SECONDS` (1.6s) even on sub-second scans. |
 | 2026-09-29 | SpotCheck previews now expand to fill the modal: panels are equal-width and fill the width, preview areas grow to fill height (min 200px) and scroll; preview content raised to 200 lines / 6000 chars. |
+| 2026-09-29 | Results rows redesigned as an aligned spreadsheet layout (Name | Size | Path | selector) via size groups; path column fills width and ellipsizes; keeper shows a green check-circle, candidates a red checked box; Results fills the window; info icon added next to Hard-link. |

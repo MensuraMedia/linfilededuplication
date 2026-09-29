@@ -15,6 +15,7 @@ from linfilededuplication.ui.widgets.info_hint import InfoHint
 class ResultsPage(BasePage):
     page_id = "results"
     title = _("Results")
+    clamp_max = 0           # fill the window for the spreadsheet-like file list
 
     def build_content(self) -> None:
         self._groups: list[dict] = []       # {group, keeper, checks:[(CheckButton, FileEntry)], widget}
@@ -40,6 +41,7 @@ class ResultsPage(BasePage):
         self.btn_trash.connect("clicked", self._trash_selected)
         self.btn_link.connect("clicked", self._link_selected)
         bar.append(self.sel_label)
+        bar.append(InfoHint(self.window, "hard-link"))
         bar.append(self.btn_link)
         bar.append(self.btn_trash)
         self.action_bar = bar
@@ -112,64 +114,75 @@ class ResultsPage(BasePage):
         header.append(spot)
         card.append(header)
 
+        # size groups align the Name and Size columns across rows (spreadsheet style)
+        name_sg = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
+        size_sg = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         for f in group.files:
-            card.append(self._file_row(f, group, record))
+            card.append(self._file_row(f, group, record, name_sg, size_sg))
         return card
 
-    def _file_row(self, f: FileEntry, group: DuplicateGroup, record: dict) -> Gtk.Box:
-        row = Gtk.Box(spacing=13)
+    def _file_row(self, f: FileEntry, group: DuplicateGroup, record: dict,
+                  name_sg: Gtk.SizeGroup, size_sg: Gtk.SizeGroup) -> Gtk.Box:
+        row = Gtk.Box(spacing=18)
         row.add_css_class("app-file-row")
         if f.keeper:
             row.add_css_class("app-keep")
-            marker = icon("app-status-success-symbolic", 18)
-            marker.add_css_class("app-accent")
-            row.append(marker)
-        else:
-            check = Gtk.CheckButton()
-            check.set_active(True)
-            check.connect("toggled", lambda _c: self._refresh_selection())
-            record["checks"].append((check, f))
-            row.append(check)
 
-        row.append(self._thumb(f))
-
-        meta = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1, hexpand=True)
+        # column 1: type icon + name (aligned across rows)
+        namecell = Gtk.Box(spacing=10)
+        namecell.append(self._thumb(f))
         name = Gtk.Label(label=f.name, xalign=0.0)
-        name.set_ellipsize(3)
-        path = Gtk.Label(label=f.parent, xalign=0.0)
+        name.set_ellipsize(3)                # PANGO_ELLIPSIZE_END
+        name.set_max_width_chars(46)
+        namecell.append(name)
+        if f.is_backup:
+            namecell.append(badge(_("Newest") if f.is_newest else _("Older"), "app-keepbadge"))
+        name_sg.add_widget(namecell)
+        row.append(namecell)
+
+        # column 2: size (right-aligned numbers)
+        size = Gtk.Label(label=human_bytes(f.size), xalign=1.0)
+        size.add_css_class("app-mono")
+        size_sg.add_widget(size)
+        row.append(size)
+
+        # column 3: path (fills remaining width, truncates with a trailing ellipsis)
+        path = Gtk.Label(label=f.parent, xalign=0.0, hexpand=True)
+        path.add_css_class("app-mono")
         path.add_css_class("app-dim")
         path.add_css_class("app-small")
         path.set_ellipsize(3)
-        meta.append(name)
-        meta.append(path)
-        row.append(meta)
+        path.set_tooltip_text(f.path)
+        row.append(path)
 
-        if f.resolution:
-            dim = Gtk.Label(label=f.resolution)
-            dim.add_css_class("app-dim")
-            dim.add_css_class("app-mono")
-            row.append(dim)
-        size = Gtk.Label(label=human_bytes(f.size))
-        size.add_css_class("app-mono")
-        row.append(size)
-        if f.is_backup:
-            row.append(badge(_("Newest") if f.is_newest else _("Older"), "app-keepbadge"))
+        # column 4: keep (green circle) or remove (red check)
         if f.keeper:
-            kb = badge(_("Keep · highest resolution") if group.kind == KIND_IMAGE else _("Keep"),
-                       "app-keepbadge")
-            row.append(kb)
+            keep = icon("app-status-success-symbolic", 20)
+            keep.add_css_class("app-keep-check")
+            keep.set_tooltip_text(_("Kept"))
+            keep.set_valign(Gtk.Align.CENTER)
+            row.append(keep)
+        else:
+            check = Gtk.CheckButton()
+            check.add_css_class("app-del-check")
+            check.set_active(True)
+            check.set_valign(Gtk.Align.CENTER)
+            check.set_tooltip_text(_("Marked for removal"))
+            check.connect("toggled", lambda _c: self._refresh_selection())
+            record["checks"].append((check, f))
+            row.append(check)
         return row
 
     def _thumb(self, f: FileEntry) -> Gtk.Widget:
         if f.is_image:
             try:
                 img = Gtk.Image.new_from_file(f.path)
-                img.set_pixel_size(44)
+                img.set_pixel_size(24)
                 img.add_css_class("app-thumb")
                 return img
             except Exception:
                 pass
-        img = icon("app-stat-items-symbolic", 22)
+        img = icon("app-stat-items-symbolic", 20)
         img.add_css_class("app-dim")
         return img
 

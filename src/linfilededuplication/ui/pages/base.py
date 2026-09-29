@@ -7,6 +7,7 @@ from gi.repository import Gtk
 class BasePage(Gtk.ScrolledWindow):
     page_id = ""
     title = ""
+    clamp_max = 1100        # content max width; 0 = fill the window (no clamp)
 
     def __init__(self, window) -> None:
         super().__init__(hexpand=True, vexpand=True)
@@ -22,9 +23,11 @@ class BasePage(Gtk.ScrolledWindow):
 
     def _wrap(self, child):
         """Keep content to a comfortable width on wide windows (Adw.Clamp)."""
+        if not self.clamp_max:
+            return child                    # fill the window (e.g. the spreadsheet-like Results)
         try:
             from gi.repository import Adw
-            clamp = Adw.Clamp(maximum_size=1100, tightening_threshold=800)
+            clamp = Adw.Clamp(maximum_size=self.clamp_max, tightening_threshold=800)
             clamp.set_child(child)
             return clamp
         except Exception:
