@@ -1,0 +1,520 @@
+<title>DedupeDash Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cantarell:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+  :root{
+    --page-bg:#e6e6e8; --win-bg:#fafafb; --headerbar:#ebebeb; --sidebar:#f2f2f2;
+    --card:#ffffff; --border:#dadada; --line:#e6e6e6; --text:#22262a; --dim:#6b7177;
+    --accent:#3584e4; --accent-fg:#1c5fb4; --accent-soft:#dbe8fa; --on-accent:#ffffff;
+    --ok:#26a269; --warn:#c88800; --err:#c01c28; --err-soft:#f7dadb;
+    --selected:#e1e6ec; --trough:#e1e1e1;
+    --thumb-1:#8fb7f0; --thumb-2:#f3b7c2; --thumb-3:#a6dcc0;
+    --shadow:0 12px 32px rgba(20,24,30,.18),0 2px 6px rgba(20,24,30,.10);
+    --ui:'Cantarell','Noto Sans',system-ui,-apple-system,sans-serif;
+    --mono:ui-monospace,'Cascadia Code','DejaVu Sans Mono',monospace;
+  }
+  :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
+    color-scheme:dark;
+    --page-bg:#131519; --win-bg:#1c1f24; --headerbar:#2a2e35; --sidebar:#262a30;
+    --card:#1e2126; --border:#363b43; --line:#2c3037; --text:#eef0f2; --dim:#9aa1aa;
+    --accent:#3584e4; --accent-fg:#99c1f1; --accent-soft:#233a57; --on-accent:#ffffff;
+    --ok:#57e389; --warn:#e6b100; --err:#ff6157; --err-soft:#3a1f22;
+    --selected:#353b44; --trough:#3a3f47;
+    --thumb-1:#2f5da3; --thumb-2:#8a4653; --thumb-3:#2f6b52;
+    --shadow:0 14px 34px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.4);
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --page-bg:#131519; --win-bg:#1c1f24; --headerbar:#2a2e35; --sidebar:#262a30;
+    --card:#1e2126; --border:#363b43; --line:#2c3037; --text:#eef0f2; --dim:#9aa1aa;
+    --accent:#3584e4; --accent-fg:#99c1f1; --accent-soft:#233a57; --on-accent:#ffffff;
+    --ok:#57e389; --warn:#e6b100; --err:#ff6157; --err-soft:#3a1f22;
+    --selected:#353b44; --trough:#3a3f47;
+    --thumb-1:#2f5da3; --thumb-2:#8a4653; --thumb-3:#2f6b52;
+    --shadow:0 14px 34px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page-bg);color:var(--text);font-family:var(--ui);
+    -webkit-font-smoothing:antialiased;line-height:1.45}
+  .wrap{max-width:1000px;margin:0 auto;padding-block:34px 60px;padding-left:16px;padding-right:16px}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  svg.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+  /* ---- page header ---- */
+  .masthead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 24px;margin-bottom:6px}
+  .masthead h1{font-size:30px;font-weight:700;margin:0;letter-spacing:-.4px;text-wrap:balance}
+  .masthead .badge{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
+    border:1px solid var(--border);border-radius:999px;padding:4px 11px;background:var(--win-bg)}
+  .masthead .badge .swatch{width:11px;height:11px;border-radius:3px;background:var(--accent)}
+  .lede{color:var(--dim);font-size:14.5px;margin:10px 0 4px;max-width:70ch}
+  .metaline{font-size:12.5px;color:var(--dim);margin-bottom:26px}
+  .metaline code{font-family:var(--mono);color:var(--text)}
+  .metaline a{color:var(--accent-fg);text-decoration:none}
+  .toggle{margin-left:auto;display:inline-flex;border:1px solid var(--border);border-radius:8px;
+    overflow:hidden;background:var(--win-bg)}
+  .toggle button{appearance:none;border:0;background:transparent;color:var(--dim);
+    font-family:var(--ui);font-size:12.5px;padding:7px 12px;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .toggle button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-fg);font-weight:700}
+
+  /* ---- screen label ---- */
+  .screen{margin-top:38px}
+  .screen-tag{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .screen-tag .n{font-family:var(--mono);font-size:12px;color:var(--on-accent);background:var(--accent);
+    border-radius:6px;padding:2px 8px;font-weight:700}
+  .screen-tag h2{font-size:16.5px;margin:0;font-weight:700}
+  .screen-tag p{margin:0;font-size:13px;color:var(--dim)}
+
+  /* ---- window frame ---- */
+  .win-scroll{overflow-x:auto;border-radius:12px}
+  .win{min-width:900px;background:var(--win-bg);border:1px solid var(--border);border-radius:12px;
+    overflow:hidden;box-shadow:var(--shadow)}
+  .titlebar{height:42px;display:flex;align-items:center;gap:10px;padding:0 14px;
+    background:var(--headerbar);border-bottom:1px solid var(--border)}
+  .dots{display:flex;gap:7px}
+  .dots i{width:12px;height:12px;border-radius:50%;background:var(--border);display:block}
+  .titlebar .t{font-size:13px;color:var(--dim);font-weight:700}
+  .titlebar .t b{color:var(--text)}
+  .titlebar .hb-actions{margin-left:auto;display:flex;gap:8px}
+  .body{display:flex;min-height:520px}
+
+  /* ---- sidebar ---- */
+  .app-sidebar{width:212px;flex:none;background:var(--sidebar);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:8px 0}
+  .logo{display:flex;align-items:center;gap:10px;padding:10px 16px 14px}
+  .logo .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;
+    display:grid;place-items:center}
+  .logo .mark svg{width:19px;height:19px;stroke:#fff}
+  .logo .name{font-weight:700;font-size:14.5px;letter-spacing:.2px}
+  .nav{display:flex;flex-direction:column;gap:1px;padding:0 8px}
+  .nav .row{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:6px;
+    color:var(--text);font-size:13.5px;cursor:default}
+  .nav .row .ic{color:var(--dim)}
+  .nav .row.active{background:var(--selected)}
+  .nav .row.active .label{font-weight:700}
+  .nav .row.active .ic{color:var(--accent)}
+  .nav .row .count{margin-left:auto;background:var(--accent);color:#fff;border-radius:9px;
+    font-size:11px;font-weight:700;padding:0 7px;line-height:17px}
+  .nav .row .dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  .nav .row .dot.run{animation:breathe 1.8s ease-in-out infinite}
+  @keyframes breathe{0%{opacity:.25}50%{opacity:1}100%{opacity:.25}}
+  .sb-spacer{flex:1}
+  .footer{border-top:1px solid var(--border);margin:6px 8px 2px;padding:10px 8px 4px}
+  .footer .h{font-size:10.5px;font-weight:700;letter-spacing:1px;color:var(--dim)}
+  .footer .s{font-size:12.5px;color:var(--text);margin-top:3px;display:flex;align-items:center;gap:7px}
+  .footer .s .dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+  .footer .s .dot.ok{background:var(--ok);animation:breathe 1.8s ease-in-out infinite}
+
+  /* ---- content ---- */
+  .content{flex:1;min-width:0;padding:22px 26px 26px;overflow:hidden}
+  .page-head{display:flex;align-items:flex-end;gap:14px;margin-bottom:18px}
+  .page-head h3{margin:0;font-size:21px;font-weight:700;letter-spacing:-.2px}
+  .page-head .sub{font-size:13px;color:var(--dim);margin-top:3px}
+  .grow{flex:1}
+
+  .btn{appearance:none;font-family:var(--ui);font-size:13px;border-radius:7px;padding:7px 13px;
+    border:1px solid var(--border);background:var(--card);color:var(--text);cursor:default;
+    display:inline-flex;align-items:center;gap:8px;font-weight:600}
+  .btn .ic{width:16px;height:16px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.danger{background:var(--err);border-color:var(--err);color:#fff}
+  .btn.ghost{background:transparent}
+  .btn.small{padding:5px 10px;font-size:12px}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .tile{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 15px}
+  .tile .l{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:12px}
+  .tile .l .ic{width:15px;height:15px;color:var(--accent)}
+  .tile .v{font-size:27px;font-weight:700;margin-top:8px;letter-spacing:-.5px}
+  .tile .v small{font-size:14px;font-weight:600;color:var(--dim)}
+  .tile .t{font-size:12px;color:var(--dim);margin-top:2px}
+
+  .section-title{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+    color:var(--dim);margin:22px 2px 10px}
+  .boxed{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .boxed .r{display:flex;align-items:center;gap:12px;padding:11px 15px;border-bottom:1px solid var(--line)}
+  .boxed .r:last-child{border-bottom:0}
+  .boxed .r .ic{color:var(--dim);width:18px;height:18px}
+  .boxed .r .main{min-width:0}
+  .boxed .r .main .p{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .boxed .r .main .m{font-size:12px;color:var(--dim);margin-top:1px}
+  .boxed .r .when{margin-left:auto;font-size:12px;color:var(--dim);white-space:nowrap}
+
+  /* scan controls */
+  .segment{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card)}
+  .segment button{appearance:none;border:0;background:transparent;font-family:var(--ui);
+    padding:8px 16px;font-size:13px;color:var(--dim);cursor:default;font-weight:600}
+  .segment button+button{border-left:1px solid var(--border)}
+  .segment button.on{background:var(--accent-soft);color:var(--accent-fg)}
+  .field{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);
+    border-radius:9px;padding:11px 14px}
+  .field .k{font-size:13.5px;font-weight:600}
+  .field .path{font-size:13px;color:var(--dim)}
+  .optrow{display:flex;align-items:center;gap:12px;padding:11px 15px;border-bottom:1px solid var(--line)}
+  .optrow:last-child{border-bottom:0}
+  .optrow .k{font-size:13.5px}
+  .optrow .m{font-size:12px;color:var(--dim)}
+  .sw{width:40px;height:23px;border-radius:999px;background:var(--trough);position:relative;flex:none}
+  .sw::after{content:"";position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:.15s}
+  .sw.on{background:var(--accent)}
+  .sw.on::after{left:19.5px}
+  .chip{font-size:12.5px;color:var(--text);background:var(--card);border:1px solid var(--border);
+    border-radius:999px;padding:5px 12px;display:inline-flex;align-items:center;gap:7px}
+  .chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-fg);font-weight:700}
+
+  .progress{height:8px;border-radius:4px;background:var(--trough);overflow:hidden}
+  .progress i{display:block;height:100%;background:var(--accent);border-radius:4px}
+  .log{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;
+    font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.7}
+  .log b{color:var(--text);font-weight:400}
+  .log .a{color:var(--accent-fg)}
+
+  /* results groups */
+  .toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:16px}
+  .group{background:var(--card);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:14px}
+  .group .gh{display:flex;align-items:center;gap:11px;padding:11px 15px;border-bottom:1px solid var(--line);
+    background:linear-gradient(0deg,transparent,transparent)}
+  .kind{font-size:11.5px;font-weight:700;letter-spacing:.3px;border-radius:6px;padding:2px 8px}
+  .kind.exact{background:var(--accent-soft);color:var(--accent-fg)}
+  .kind.image{background:color-mix(in srgb,var(--ok) 22%,transparent);color:var(--ok)}
+  .gh .gt{font-weight:700;font-size:13.5px}
+  .gh .gm{font-size:12px;color:var(--dim)}
+  .gh .ga{margin-left:auto;display:flex;gap:8px}
+  .file{display:flex;align-items:center;gap:13px;padding:11px 15px;border-bottom:1px solid var(--line)}
+  .file:last-child{border-bottom:0}
+  .file.keep{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+  .thumb{width:46px;height:46px;border-radius:7px;flex:none;display:grid;place-items:center;
+    font-family:var(--mono);font-size:8.5px;color:rgba(255,255,255,.9);text-align:center;font-weight:700}
+  .cbx{width:19px;height:19px;border-radius:5px;border:1.6px solid var(--dim);flex:none}
+  .cbx.on{background:var(--accent);border-color:var(--accent);display:grid;place-items:center}
+  .cbx.on svg{width:13px;height:13px;stroke:#fff;stroke-width:2.4}
+  .cbx.lock{border-style:dashed;opacity:.5}
+  .file .fmeta{min-width:0;flex:1}
+  .file .fname{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file .fpath{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file .dim{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:nowrap}
+  .file .size{font-family:var(--mono);font-size:12.5px;white-space:nowrap;min-width:62px;text-align:right}
+  .keepbadge{font-size:11px;font-weight:700;color:var(--accent-fg);background:var(--accent-soft);
+    border-radius:999px;padding:2px 9px;white-space:nowrap}
+  .actionbar{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);
+    border-radius:10px;padding:12px 15px;margin-top:6px}
+  .actionbar .summary{font-size:13px}
+  .actionbar .summary b{font-weight:700}
+  .actionbar .dry{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px}
+  .actionbar .dry .ic{width:15px;height:15px;color:var(--ok)}
+
+  /* dialog */
+  .dialog-stage{position:relative;background:
+      repeating-linear-gradient(45deg,var(--sidebar),var(--sidebar) 12px,transparent 12px,transparent 24px);
+    padding:26px}
+  .dialog{max-width:420px;margin:0 auto;background:var(--win-bg);border:1px solid var(--border);
+    border-radius:14px;box-shadow:var(--shadow);padding:22px 22px 16px;text-align:center}
+  .dialog .warn-ic{width:44px;height:44px;border-radius:50%;background:var(--err-soft);color:var(--err);
+    display:grid;place-items:center;margin:2px auto 12px}
+  .dialog .warn-ic svg{width:24px;height:24px;stroke:var(--err)}
+  .dialog h4{margin:0 0 8px;font-size:17px;font-weight:700}
+  .dialog p{margin:0;font-size:13.5px;color:var(--dim);line-height:1.5}
+  .dialog .keeps{text-align:left;background:var(--card);border:1px solid var(--border);border-radius:9px;
+    padding:10px 13px;margin:15px 0;font-size:12.5px;display:flex;flex-direction:column;gap:6px}
+  .dialog .keeps .k{display:flex;gap:9px;align-items:center;color:var(--text)}
+  .dialog .keeps .k .ic{width:15px;height:15px;color:var(--ok)}
+  .dialog .keeps .k .mono{color:var(--dim)}
+  .dialog .btns{display:flex;gap:10px;margin-top:6px}
+  .dialog .btns .btn{flex:1;justify-content:center}
+
+  /* prefs */
+  .prefs{display:flex;flex-direction:column;gap:22px}
+  .pgrp .pt{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--dim);
+    margin:0 2px 9px}
+  .slider{flex:1;max-width:220px;height:6px;border-radius:3px;background:var(--trough);position:relative}
+  .slider i{position:absolute;left:0;top:0;height:100%;border-radius:3px;background:var(--accent)}
+  .slider b{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:#fff;
+    border:1.5px solid var(--accent);transform:translate(-50%,-50%);box-shadow:0 1px 2px rgba(0,0,0,.3)}
+  .selectbox{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--border);
+    border-radius:7px;padding:6px 10px;font-size:13px;background:var(--card)}
+  .selectbox .ic{width:15px;height:15px;color:var(--dim)}
+  .rule{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
+  .rule:last-child{border-bottom:0}
+  .rule .rk{font-family:var(--mono);font-size:12px;color:var(--on-accent);background:var(--accent);
+    width:20px;height:20px;border-radius:5px;display:grid;place-items:center;font-weight:700;flex:none}
+  .rule .rn{font-size:13.5px;font-weight:600}
+  .rule .ra{font-size:12px;color:var(--dim);margin-left:auto}
+  .rule .drag{color:var(--dim);letter-spacing:2px;font-size:13px}
+
+  .footnote{margin-top:34px;padding-top:18px;border-top:1px solid var(--border);
+    font-size:12.5px;color:var(--dim);line-height:1.6}
+  .footnote b{color:var(--text)}
+
+  @media (max-width:560px){
+    .masthead h1{font-size:24px}
+    .toggle{margin-left:0}
+  }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="ic-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
+  <symbol id="ic-scan" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></symbol>
+  <symbol id="ic-results" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M15 5.5V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h.5"/></symbol>
+  <symbol id="ic-history" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><polyline points="12 7.5 12 12 15.5 14"/></symbol>
+  <symbol id="ic-settings" viewBox="0 0 24 24"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="9" cy="8" r="2.3" fill="currentColor" stroke="none"/><circle cx="15" cy="16" r="2.3" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-about" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16.5"/><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-folder" viewBox="0 0 24 24"><path d="M3 7.5a2 2 0 0 1 2-2h3.6l2 2H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="ic-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M4 18l5-5 3.5 3 3-3 4.5 4.5"/></symbol>
+  <symbol id="ic-file" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="ic-trash" viewBox="0 0 24 24"><polyline points="4 7 20 7"/><path d="M6.5 7l1 12.2a1.8 1.8 0 0 0 1.8 1.8h5.4a1.8 1.8 0 0 0 1.8-1.8L17.5 7"/><path d="M9.5 7V5a1.8 1.8 0 0 1 1.8-1.8h1.4A1.8 1.8 0 0 1 14.5 5v2"/></symbol>
+  <symbol id="ic-link" viewBox="0 0 24 24"><path d="M9 15l6-6"/><path d="M11 6.5l1.3-1.3a4 4 0 0 1 5.7 5.7L16.7 12"/><path d="M13 17.5l-1.3 1.3a4 4 0 0 1-5.7-5.7L7.3 12"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5 12.5 10 17.5 19 7"/></symbol>
+  <symbol id="ic-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-warn" viewBox="0 0 24 24"><path d="M12 3.5l9 16H3z"/><line x1="12" y1="10" x2="12" y2="14.5"/><circle cx="12" cy="17.4" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-chevron" viewBox="0 0 24 24"><polyline points="8 6 14 12 8 18"/></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.5v5c0 5-3.2 8-7 9.5-3.8-1.5-7-4.5-7-9.5v-5z"/><polyline points="9 12 11 14 15 9.5"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+  <div class="masthead">
+    <h1>DedupeDash</h1>
+    <span class="badge"><span class="swatch"></span>Design-stage mockups</span>
+    <div class="toggle" role="group" aria-label="Preview theme">
+      <button id="t-light" aria-pressed="false">Light</button>
+      <button id="t-dark" aria-pressed="false">Dark</button>
+      <button id="t-system" aria-pressed="true">System</button>
+    </div>
+  </div>
+  <p class="lede">Screen mockups for <b>linfilededuplication</b>, a GTK&nbsp;4 + libadwaita file-deduplication
+    dashboard, drawn in the MensuraMedia house style before any code is written.</p>
+  <p class="metaline"><a href="https://github.com/MensuraMedia/linfilededuplication">github.com/MensuraMedia/linfilededuplication</a>
+    &nbsp;·&nbsp; Foundation: <code>gtk4-dashboard-template</code> &nbsp;·&nbsp; Accent <code>#3584e4</code>
+    &nbsp;·&nbsp; Sidebar 212&nbsp;px &nbsp;·&nbsp; Cantarell / monospace</p>
+
+  <!-- ============ 1. OVERVIEW ============ -->
+  <div class="screen">
+    <div class="screen-tag"><span class="n">01</span><h2>Overview</h2><p>Scan roots, reclaimable space, recent runs</p></div>
+    <div class="win-scroll"><div class="win">
+      <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
+        <span class="t"><b>DedupeDash</b> — Overview</span></div>
+      <div class="body">
+        <div class="app-sidebar" data-active="overview" data-status="idle"></div>
+        <div class="content">
+          <div class="page-head"><div><h3>Overview</h3><div class="sub">3 folders watched · last scan 2 minutes ago</div></div>
+            <div class="grow"></div>
+            <button class="btn primary"><svg class="ic"><use href="#ic-scan"/></svg>New scan</button></div>
+          <div class="tiles">
+            <div class="tile"><div class="l"><svg class="ic"><use href="#ic-results"/></svg>Duplicate groups</div><div class="v mono">128</div><div class="t">across 3 folders</div></div>
+            <div class="tile"><div class="l"><svg class="ic"><use href="#ic-trash"/></svg>Reclaimable</div><div class="v mono">4.7<small> GB</small></div><div class="t">if extras removed</div></div>
+            <div class="tile"><div class="l"><svg class="ic"><use href="#ic-file"/></svg>Files scanned</div><div class="v mono">82,431</div><div class="t">1,204 images</div></div>
+            <div class="tile"><div class="l"><svg class="ic"><use href="#ic-history"/></svg>Last scan</div><div class="v">2<small> min</small></div><div class="t">~/Pictures</div></div>
+          </div>
+          <div class="section-title">Recent scans</div>
+          <div class="boxed">
+            <div class="r"><svg class="ic"><use href="#ic-image"/></svg><div class="main"><div class="p mono">~/Pictures</div><div class="m">3,204 images · 41 groups · 2.1 GB reclaimable</div></div><span class="when">2 min ago</span></div>
+            <div class="r"><svg class="ic"><use href="#ic-folder"/></svg><div class="main"><div class="p mono">~/Downloads</div><div class="m">12,880 files · 63 groups · 1.9 GB reclaimable</div></div><span class="when">yesterday</span></div>
+            <div class="r"><svg class="ic"><use href="#ic-folder"/></svg><div class="main"><div class="p mono">/mnt/media</div><div class="m">66,347 files · 24 groups · 0.7 GB reclaimable</div></div><span class="when">3 days ago</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ============ 2. SCAN ============ -->
+  <div class="screen">
+    <div class="screen-tag"><span class="n">02</span><h2>Scan</h2><p>Simple / Advanced tiers, options, live progress</p></div>
+    <div class="win-scroll"><div class="win">
+      <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
+        <span class="t"><b>DedupeDash</b> — Scanning ~/Pictures</span></div>
+      <div class="body">
+        <div class="app-sidebar" data-active="scan" data-status="scanning" data-run="scan"></div>
+        <div class="content">
+          <div class="page-head"><div><h3>Scan</h3><div class="sub">Read-only · nothing is changed until you confirm</div></div></div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+            <div class="segment"><button class="on">Simple Scan</button><button>Advanced Scan</button></div>
+            <span class="sub" style="font-size:12.5px;color:var(--dim)">Exact duplicates + image near-duplicates</span>
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <svg class="ic" style="color:var(--accent)"><use href="#ic-folder"/></svg>
+            <div><div class="k">Folder to scan</div><div class="path mono">/home/user/Pictures</div></div>
+            <div class="grow"></div><button class="btn small">Choose…</button></div>
+          <div class="boxed" style="margin-bottom:16px">
+            <div class="optrow"><div><div class="k">Find image near-duplicates</div><div class="m">Perceptual hash, Hamming distance ≤ 8</div></div><div class="grow"></div><span class="sw on"></span></div>
+            <div class="optrow"><div><div class="k">Include hidden files</div><div class="m">Dotfiles and dot-folders</div></div><div class="grow"></div><span class="sw"></span></div>
+            <div class="optrow"><div><div class="k">Minimum file size</div><div class="m">Skip tiny files</div></div><div class="grow"></div><span class="chip mono">1 MB</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+            <button class="btn danger" style="background:var(--card);border-color:var(--border);color:var(--text)"><svg class="ic"><use href="#ic-stop"/></svg>Stop</button>
+            <div class="grow"></div>
+            <span class="mono" style="font-size:12.5px;color:var(--dim)">2,018 / 3,204 · 63%</span></div>
+          <div class="progress" style="margin-bottom:14px"><i style="width:63%"></i></div>
+          <div class="log">
+            <div><span class="a">size-filter</span>&nbsp;&nbsp;3,204 images → <b>612 candidates in 197 size buckets</b></div>
+            <div><span class="a">progressive</span>&nbsp;xxHash prefix → <b>318 survived</b></div>
+            <div><span class="a">sha-256</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hashing 2,018 / 3,204 …&nbsp; <b>41 exact groups so far</b></div>
+            <div><span class="a">perceptual</span>&nbsp;pHash → <b>17 near-duplicate groups (≤ 8 bits)</b></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ============ 3. RESULTS ============ -->
+  <div class="screen">
+    <div class="screen-tag"><span class="n">03</span><h2>Results</h2><p>Duplicate groups — exact and image near-duplicates, highest resolution kept</p></div>
+    <div class="win-scroll"><div class="win">
+      <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
+        <span class="t"><b>DedupeDash</b> — Results</span></div>
+      <div class="body">
+        <div class="app-sidebar" data-active="results" data-status="idle" data-count="41"></div>
+        <div class="content">
+          <div class="page-head"><div><h3>Results — ~/Pictures</h3><div class="sub">41 duplicate groups · 2.1 GB reclaimable</div></div></div>
+          <div class="toolbar">
+            <span class="chip on">All</span><span class="chip">Exact</span><span class="chip">Images</span>
+            <div class="grow"></div>
+            <span class="selectbox">Sort: reclaimable<svg class="ic"><use href="#ic-chevron"/></svg></span>
+          </div>
+
+          <div class="group">
+            <div class="gh"><span class="kind exact">EXACT · SHA-256</span><div><div class="gt">IMG_2381.jpg</div></div>
+              <div class="grow"></div><span class="gm">3 files · reclaim 12.4 MB</span>
+              <div class="ga"><button class="btn small primary">Keep one · delete others</button><button class="btn small"><svg class="ic"><use href="#ic-link"/></svg>Hard-link</button></div></div>
+            <div class="file keep"><div class="thumb" style="background:var(--thumb-1)">4032<br>×3024</div>
+              <div class="fmeta"><div class="fname">IMG_2381.jpg</div><div class="fpath mono">~/Pictures/2024/</div></div>
+              <span class="dim">4032×3024</span><span class="size">6.2 MB</span><span class="keepbadge">Keep</span></div>
+            <div class="file"><div class="cbx on"><svg><use href="#ic-check"/></svg></div><div class="thumb" style="background:var(--thumb-1)">4032<br>×3024</div>
+              <div class="fmeta"><div class="fname">IMG_2381 (1).jpg</div><div class="fpath mono">~/Downloads/</div></div>
+              <span class="dim">4032×3024</span><span class="size">6.2 MB</span></div>
+            <div class="file"><div class="cbx on"><svg><use href="#ic-check"/></svg></div><div class="thumb" style="background:var(--thumb-1)">4032<br>×3024</div>
+              <div class="fmeta"><div class="fname">copy of IMG_2381.jpg</div><div class="fpath mono">~/Desktop/</div></div>
+              <span class="dim">4032×3024</span><span class="size">6.2 MB</span></div>
+          </div>
+
+          <div class="group">
+            <div class="gh"><span class="kind image">IMAGES · pHash · Δ3</span><div><div class="gt">beach-sunset</div></div>
+              <div class="grow"></div><span class="gm">3 files · reclaim 1.3 MB</span>
+              <div class="ga"><button class="btn small primary">Keep highest-res · delete others</button></div></div>
+            <div class="file keep"><div class="thumb" style="background:var(--thumb-2)">5120<br>×2880</div>
+              <div class="fmeta"><div class="fname">beach-sunset.png</div><div class="fpath mono">~/Pictures/wallpapers/</div></div>
+              <span class="dim">5120×2880</span><span class="size">8.9 MB</span><span class="keepbadge">Keep · highest resolution</span></div>
+            <div class="file"><div class="cbx on"><svg><use href="#ic-check"/></svg></div><div class="thumb" style="background:var(--thumb-2)">1920<br>×1080</div>
+              <div class="fmeta"><div class="fname">beach-sunset-resized.jpg</div><div class="fpath mono">~/Downloads/</div></div>
+              <span class="dim">1920×1080</span><span class="size">1.2 MB</span></div>
+            <div class="file"><div class="cbx on"><svg><use href="#ic-check"/></svg></div><div class="thumb" style="background:var(--thumb-2)">640<br>×360</div>
+              <div class="fmeta"><div class="fname">beach-sunset-thumb.jpg</div><div class="fpath mono">~/.cache/thumbnails/</div></div>
+              <span class="dim">640×360</span><span class="size">96 KB</span></div>
+          </div>
+
+          <div class="actionbar">
+            <div class="summary"><b>2 groups</b> · 4 files selected · reclaim <b class="mono">13.6 MB</b></div>
+            <div class="grow"></div>
+            <span class="dry"><svg class="ic"><use href="#ic-shield"/></svg>Dry-run — review before applying</span>
+            <button class="btn"><svg class="ic"><use href="#ic-link"/></svg>Hard-link</button>
+            <button class="btn danger"><svg class="ic"><use href="#ic-trash"/></svg>Move to Trash</button>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ============ 4. CONFIRM DIALOG ============ -->
+  <div class="screen">
+    <div class="screen-tag"><span class="n">04</span><h2>Confirm removal</h2><p>Adw.AlertDialog — concrete counts, originals kept, recoverable</p></div>
+    <div class="win-scroll"><div class="win">
+      <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
+        <span class="t"><b>DedupeDash</b> — Results</span></div>
+      <div class="dialog-stage">
+        <div class="dialog">
+          <div class="warn-ic"><svg><use href="#ic-trash"/></svg></div>
+          <h4>Move 4 files to Trash?</h4>
+          <p>The selected copies from 2 groups will be moved to Trash. You can restore them from your file manager.</p>
+          <div class="keeps">
+            <div class="k"><svg class="ic"><use href="#ic-check"/></svg>Keeps <b>IMG_2381.jpg</b> <span class="mono">(4032×3024, ~/Pictures/2024)</span></div>
+            <div class="k"><svg class="ic"><use href="#ic-check"/></svg>Keeps <b>beach-sunset.png</b> <span class="mono">(5120×2880, highest resolution)</span></div>
+          </div>
+          <div class="btns"><button class="btn ghost">Cancel</button><button class="btn danger">Move to Trash</button></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ============ 5. SETTINGS (ADVANCED) ============ -->
+  <div class="screen">
+    <div class="screen-tag"><span class="n">05</span><h2>Settings — Advanced</h2><p>Matching thresholds, the keep-policy order, safety</p></div>
+    <div class="win-scroll"><div class="win">
+      <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span>
+        <span class="t"><b>DedupeDash</b> — Settings</span></div>
+      <div class="body">
+        <div class="app-sidebar" data-active="settings" data-status="idle"></div>
+        <div class="content">
+          <div class="page-head"><div><h3>Settings</h3><div class="sub">Applied to Advanced Scan</div></div></div>
+          <div class="prefs">
+            <div class="pgrp"><div class="pt">Matching</div>
+              <div class="boxed">
+                <div class="optrow"><div><div class="k">Cryptographic hash</div><div class="m">Exact-match algorithm</div></div><div class="grow"></div><span class="selectbox mono">SHA-256<svg class="ic"><use href="#ic-chevron"/></svg></span></div>
+                <div class="optrow"><div><div class="k">Image similarity</div><div class="m">Max Hamming distance for near-duplicates</div></div><div class="grow"></div><span class="slider" style="margin-right:12px"><i style="width:50%"></i><b style="left:50%"></b></span><span class="chip mono">8 / 64</span></div>
+                <div class="optrow"><div><div class="k">Fuzzy hashing</div><div class="m">ssdeep / TLSH for edited files</div></div><div class="grow"></div><span class="sw on"></span></div>
+                <div class="optrow"><div><div class="k">Deep-embedding matches</div><div class="m">Semantic image similarity · experimental, off by default</div></div><div class="grow"></div><span class="sw"></span></div>
+              </div>
+            </div>
+            <div class="pgrp"><div class="pt">Keep policy — which file to keep in each group</div>
+              <div class="boxed">
+                <div class="rule"><span class="drag">⠿</span><span class="rk">1</span><span class="rn">Highest resolution (width × height)</span><span class="ra">images</span></div>
+                <div class="rule"><span class="drag">⠿</span><span class="rk">2</span><span class="rn">Largest file size</span><span class="ra">all</span></div>
+                <div class="rule"><span class="drag">⠿</span><span class="rk">3</span><span class="rn">Non-derived filename</span><span class="ra">no copy / -1 / resized / thumb</span></div>
+                <div class="rule"><span class="drag">⠿</span><span class="rk">4</span><span class="rn">Inside a preferred folder</span><span class="ra">~/Pictures</span></div>
+                <div class="rule"><span class="drag">⠿</span><span class="rk">5</span><span class="rn">Oldest modification time</span><span class="ra">all</span></div>
+              </div>
+            </div>
+            <div class="pgrp"><div class="pt">Safety</div>
+              <div class="boxed">
+                <div class="optrow"><div><div class="k">Default action</div><div class="m">What happens to extras</div></div><div class="grow"></div><span class="selectbox">Move to Trash<svg class="ic"><use href="#ic-chevron"/></svg></span></div>
+                <div class="optrow"><div><div class="k">Dry-run preview</div><div class="m">Always review before applying</div></div><div class="grow"></div><span class="sw on"></span></div>
+                <div class="optrow"><div><div class="k">Protected paths</div><div class="m">Never touched</div></div><div class="grow"></div><span class="chip mono">/ · ~ · /media</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <p class="footnote"><b>Notes.</b> These are static design-stage mockups, not the running app; thumbnail
+    tiles are placeholders showing each file's pixel dimensions. Colours, the 212&nbsp;px sidebar, boxed lists,
+    the breathing activity dot and the accent (<span class="mono">#3584e4</span>) follow the
+    <span class="mono">gtk4-dashboard-template</span> tokens so the built GTK&nbsp;4 + libadwaita app matches. Use the
+    Light / Dark / System control at the top to preview both themes.</p>
+</div>
+
+<script>
+  // Theme preview toggle (per-viewer convenience only)
+  var root=document.documentElement, KEY='dedupedash-theme';
+  var btns={light:document.getElementById('t-light'),dark:document.getElementById('t-dark'),system:document.getElementById('t-system')};
+  function apply(mode){
+    if(mode==='system'){root.removeAttribute('data-theme');}
+    else{root.setAttribute('data-theme',mode);}
+    for(var k in btns){btns[k].setAttribute('aria-pressed', String(k===mode));}
+    try{localStorage.setItem(KEY,mode);}catch(e){}
+  }
+  Object.keys(btns).forEach(function(k){btns[k].addEventListener('click',function(){apply(k);});});
+  var saved='system';
+  try{saved=localStorage.getItem(KEY)||'system';}catch(e){}
+  apply(saved);
+
+  // Build the shared sidebar into every .app-sidebar
+  var NAV=[['overview','Overview','ic-overview'],['scan','Scan','ic-scan'],['results','Results','ic-results'],['history','History','ic-history'],['settings','Settings','ic-settings']];
+  document.querySelectorAll('.app-sidebar').forEach(function(sb){
+    var active=sb.getAttribute('data-active'), run=sb.getAttribute('data-run'),
+        count=sb.getAttribute('data-count'), status=sb.getAttribute('data-status')||'idle';
+    var html='<div class="logo"><span class="mark"><svg viewBox="0 0 24 24"><use href="#ic-results"/></svg></span><span class="name">DedupeDash</span></div><div class="nav">';
+    NAV.forEach(function(it){
+      var on=it[0]===active;
+      var tail='';
+      if(run===it[0]) tail='<span class="dot run"></span>';
+      else if(count&&it[0]==='results') tail='<span class="count">'+count+'</span>';
+      html+='<div class="row'+(on?' active':'')+'"><svg class="ic"><use href="#'+it[2]+'"/></svg><span class="label">'+it[1]+'</span>'+tail+'</div>';
+    });
+    html+='</div><div class="sb-spacer"></div><div class="nav"><div class="row"><svg class="ic"><use href="#ic-about"/></svg><span class="label">About</span></div></div>';
+    var st = status==='scanning'
+      ? '<span class="s"><span class="dot ok"></span>Scanning ~/Pictures…</span>'
+      : '<span class="s"><span class="dot"></span>Idle</span>';
+    html+='<div class="footer"><div class="h">STATUS</div>'+st+'</div>';
+    sb.innerHTML=html;
+  });
+</script>

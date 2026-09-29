@@ -1,0 +1,15 @@
+#!/bin/sh
+# Installed launcher. build-deb.sh / install.sh rewrite __ROOT__ to the install prefix.
+INSTALL_ROOT="__ROOT__"
+if [ "$INSTALL_ROOT" = "__ROOT__" ]; then
+  # running from a checkout: resolve the repo root from this script's location
+  SELF="$0"
+  while [ -h "$SELF" ]; do SELF="$(readlink "$SELF")"; done
+  ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
+  export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+  export LINFILEDEDUPLICATION_DATA_DIR="$ROOT/data"
+else
+  export PYTHONPATH="$INSTALL_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+  export LINFILEDEDUPLICATION_DATA_DIR="/usr/share/linfilededuplication"
+fi
+exec python3 -m linfilededuplication "$@"

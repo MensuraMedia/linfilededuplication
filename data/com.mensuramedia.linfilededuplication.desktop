@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=DedupeDash
+GenericName=Duplicate File Finder
+Comment=Find and safely remove duplicate and near-duplicate files
+Exec=linfilededuplication %F
+TryExec=linfilededuplication
+Icon=com.mensuramedia.linfilededuplication
+Terminal=false
+Categories=Utility;GTK;FileTools;
+Keywords=duplicate;dedupe;deduplication;files;images;cleanup;disk;space;
+StartupNotify=true
+StartupWMClass=com.mensuramedia.linfilededuplication
+MimeType=inode/directory;

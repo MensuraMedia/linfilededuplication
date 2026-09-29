@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linfilededuplication"
+version = "0.1.0"
+description = "DedupeDash - find and safely remove duplicate and near-duplicate files"
+requires-python = ">=3.11"
+license = { text = "LicenseRef-CC-BY-NC-4.0" }
+license-files = ["LICENSE.md"]
+authors = [{ name = "MensuraMedia" }]
+dependencies = [
+  "PyGObject>=3.42",
+  "pycairo>=1.20",
+]
+
+[project.optional-dependencies]
+# Runtime-detected extras. Distro packages are python3-pil / python3-imagehash / python3-xxhash.
+images = ["Pillow>=9.0", "imagehash>=4.3"]
+fast = ["xxhash>=3.0"]
+
+[project.scripts]
+linfilededuplication = "linfilededuplication.app:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = [".venv", "debian", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = ["N802"]           # GTK vfunc names: do_activate, do_open, do_startup
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-ra"

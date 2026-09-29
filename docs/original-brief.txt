@@ -1,0 +1,239 @@
+Building a File Deduplication Application for Debian Linux using a GTK4 + Libadwaita Dashboard Framework
+Important Note on the Specified Framework
+
+The repository https://github.com/MensuraMedia/gtk4-dashboard-template 
+This instruction set therefore uses the closest modern, production-ready equivalent pattern that matches the intended style: a GTK4 + Libadwaita dashboard-style application (sidebar navigation, modular pages/widgets, Adwaita styling, Python or C backend where necessary - but should favor python). It draws structural inspiration from well-maintained public GTK4/Adwaita dashboard and application templates (e.g., Python-based dashboard patterns, Meson + Blueprint/UI templates, and GNOME HIG-compliant layouts).
+All code, architecture, and packaging instructions are tailored for Debian 12/13 (Bookworm/Trixie) and derivatives.
+
+Note: This system is being developed on a linux debian mint environment.
+
+1. Project Goals & Scope
+Create a native Linux desktop application named DedupeDash (or user-chosen name) that:
+
+Implements the top-20 file deduplication comparison features previously defined (cryptographic hashing, size pre-filter, progressive hashing, fixed/variable chunking, perceptual hashing for images, fuzzy hashing, metadata comparison, deep embeddings where feasible, policy engine, hard-link support, etc.).
+Provides a modern, responsive dashboard-style UI with:
+Left sidebar navigation (Scan, Results, Settings, History, About).
+Main content area that switches between modular “pages”.
+Progress indicators, results lists with previews (especially images), selection controls, and safe deletion/hard-link actions.
+
+Runs natively on Debian with GTK 4 + Libadwaita.
+Supports both exact and near-duplicate detection across all file types, with special emphasis on images.
+Is packaged as a .deb and optionally Flatpak.
+Follows GNOME HIG and is keyboard-accessible.
+
+
+2. Technology Stack (Debian-native)
+Recommended primary stack (easiest for rapid development + dashboard style):
+
+Language: Python 3.11+
+UI: GTK 4 + Libadwaita (gi.repository)
+Build: Meson + Ninja (or pure Python with pyproject.toml + setuptools for simpler cases)
+Hashing / Dedup engine: hashlib, xxhash, imagehash (perceptual), ssdeep / tlsh (fuzzy), Pillow, optionally onnxruntime or torch for embeddings
+Async / background work: GLib, Gio, or asyncio + threading
+Packaging: python3-gi, libadwaita-1, Debian packaging tools
+
+Alternative high-performance stacks (if needed):
+
+C + GTK4 + Libadwaita + Meson + Blueprint
+Rust + gtk4-rs + libadwaita-rs
+
+Debian packages to install for development:
+
+sudo apt update
+sudo apt install -y \
+  python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 \
+  libadwaita-1-dev libgtk-4-dev \
+  python3-pil python3-xxhash python3-imagehash \
+  meson ninja-build pkg-config \
+  blueprint-compiler  # if using .blp files
+
+
+3. Project Structure (Dashboard Template Style)
+
+dedupedash/
+├── meson.build                  # or pyproject.toml
+├── data/
+│   ├── com.example.DedupeDash.desktop
+│   ├── com.example.DedupeDash.metainfo.xml
+│   ├── icons/
+│   └── ui/                      # .ui or .blp files
+│       ├── window.ui
+│       ├── page-scan.ui
+│       ├── page-results.ui
+│       └── ...
+├── src/
+│   ├── main.py                  # or main.c / main.rs
+│   ├── application.py
+│   ├── window.py
+│   ├── pages/
+│   │   ├── scan_page.py
+│   │   ├── results_page.py
+│   │   ├── settings_page.py
+│   │   └── history_page.py
+│   ├── core/
+│   │   ├── scanner.py           # Main deduplication engine
+│   │   ├── hashers.py           # All hashing strategies
+│   │   ├── image_perceptual.py
+│   │   ├── chunking.py
+│   │   └── policy.py
+│   └── utils/
+│       ├── file_ops.py
+│       └── thumbnails.py
+├── po/                          # translations
+└── README.md
+
+
+4. Core Deduplication Engine Requirements (Must Implement)
+Map the previous top-20 features into concrete modules:
+
+Exact match pipeline (mandatory first stage)
+Size pre-filter
+Progressive hash (first 4–64 KB then full)
+Cryptographic full-file hash (SHA-256 preferred, xxHash for speed)
+Optional byte-for-byte verification
+
+Near-duplicate / content-aware
+Fixed-size and Content-Defined Chunking (CDC)
+Fuzzy hashing (ssdeep / TLSH)
+Perceptual hashing for images (aHash, dHash, pHash, wHash) with configurable Hamming distance
+Optional deep embedding similarity (CLIP-style or lightweight CNN) for semantic duplicates
+
+Metadata & policy layer
+EXIF / ID3 / document properties comparison
+Filename fuzzy matching
+Keep/delete policy engine (prefer newer, prefer higher quality, prefer specific folders, hard-link instead of delete, etc.)
+
+Safety & UX features
+Dry-run mode
+Preview of duplicate groups (thumbnails for images)
+Hard-link / symlink / move-to-trash options
+Progress reporting via GLib signals or callbacks
+Cancellation support
+
+
+Implement the engine as a pure Python (or C) library that can run headless and report results via callbacks or a result model that the UI consumes.
+
+5. UI Architecture (Dashboard Pattern)
+
+Use Adw.Application + Adw.ApplicationWindow
+Left sidebar: Adw.NavigationSplitView or Gtk.ListBox + Adw.ViewStack / Adw.Leaflet
+Each “page” is a self-contained widget that can be swapped in the content area
+Results page: Gtk.ColumnView or Gtk.ListView with custom factories showing:
+Group header (hash / similarity score)
+File list with path, size, modified date, thumbnail
+Checkboxes for selection + “Keep one / Delete others / Hard-link” actions
+
+Scan page: folder chooser, options toggles (exact only / near-duplicates / images only / include hidden / min size), start/stop button, live progress bar + log
+Settings page: hash algorithms, perceptual thresholds, default policy, exclusion patterns
+Use Adw.Toast for non-blocking feedback
+Support dark/light mode automatically via Adwaita
+
+
+6. Implementation Steps for an AI / Developer
+
+Scaffold the project from a clean GTK4 + Libadwaita template (Python preferred for speed).
+Create the Application and Window classes following GNOME patterns.
+Build the navigation shell first (sidebar + empty pages).
+Implement the core scanner as an independent module with unit tests.
+Wire the scanner to the UI via GObject signals or a result model (Gio.ListStore of duplicate groups).
+Add progressive result population so the UI stays responsive.
+Implement safe deletion / hard-linking with confirmation dialogs (Adw.AlertDialog).
+Add thumbnail generation (Pillow + Gdk.Texture) for image groups.
+Package:
+Desktop file + metainfo
+Debian package (dpkg-buildpackage or dh)
+Optional Flatpak manifest
+
+
+
+7. Debian Packaging & Distribution
+
+Create a proper debian/ directory or use python3-setuptools + stdeb.
+Dependencies in control file: python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, python3-pil, ...
+Install icons, desktop file, and metainfo under standard FHS paths.
+Provide both .deb and Flatpak options.
+
+
+8. Quality & Safety Requirements
+
+Never delete without explicit user confirmation (or a clear “auto” mode that is off by default).
+Always offer a dry-run / preview.
+Log all actions.
+Handle permission errors gracefully.
+Support cancellation of long-running scans.
+Follow GNOME accessibility guidelines (keyboard navigation, screen-reader labels).
+
+# Create project
+mkdir dedupedash && cd dedupedash
+# (use a template generator or manually create structure)
+
+# Install runtime + build deps
+sudo apt install ... (as listed above)
+
+# Develop
+python3 -m venv .venv --system-site-packages
+source .venv/bin/activate
+# iterate on UI + engine
+
+# Test
+meson setup build && ninja -C build
+./build/src/dedupedash
+9. Suggested Starting Command Sequence (Debian)
+
+# Create project
+mkdir dedupedash && cd dedupedash
+# (use a template generator or manually create structure)
+
+# Install runtime + build deps
+sudo apt install ... (as listed above)
+
+# Develop
+python3 -m venv .venv --system-site-packages
+source .venv/bin/activate
+# iterate on UI + engine
+
+# Test
+meson setup build && ninja -C build
+./build/src/dedupedash
+
+
+10. Deliverables the AI Must Produce
+When following these instructions, generate:
+
+Complete project skeleton
+Working scanner implementing at least features 1–10 from the top-20 list
+Fully functional dashboard UI with Scan + Results pages
+Debian packaging files
+README with build, run, and usage instructions
+Clear separation between core engine and UI so the engine can later be reused in CLI or server mode
+
+The app should have features separated into teirs such as Simple Scan (with image comparisons) and Advanced Scan and should favor high resolution images over limited resolution or partial images of the same type and the app should include  these core fundamentals if possible:
+
+
+
+Rank,Feature,Description,Primary File Types,Typical Implementation / Notes
+1,Cryptographic full-file hash equality,"Exact byte-for-byte identity via MD5, SHA-1, SHA-256, or SHA-512",All,"Fast first-pass filter; collision-resistant; used by virtually every tool (jdupes, fdupes, enterprise inline/post-process engines)"
+2,File size pre-filter,Discard candidates of unequal size before any hashing,All,Universal early rejection step; reduces I/O dramatically
+3,Partial / progressive content hashing,Hash first 4–64 KB (or variable prefix) then full content only on match,All,"Performance optimization in jdupes, rmlint, enterprise systems"
+4,Fixed-size block / chunk hashing,"Divide into fixed blocks (e.g., 4 KB, 8 KB, 64 KB) and hash each","All (especially backups, VMs)","Classic block-level dedup (Data Domain, NetApp, ZFS)"
+5,Content-Defined Chunking (CDC) / Variable-length chunking,Rabin fingerprint or similar boundary detection for shift-resistant chunks,All (high redundancy workloads),Superior ratio on incremental data; used in many modern backup appliances
+6,Byte-for-byte verification,Full sequential comparison of candidate pairs after hash match,All,Final safety check to eliminate rare hash collisions
+7,Perceptual hashing (pHash / aHash / dHash / wHash),"Visual fingerprint based on low-frequency structure, average, difference, or wavelet features; compared via Hamming distance","Images (JPEG, PNG, RAW, TIFF, etc.)","Industry standard for near-duplicates (resize, recompress, mild crop, brightness change); libraries such as ImageHash / imagededup"
+8,Hamming-distance threshold tuning,Configurable bit-difference tolerance (typically 0–12) on perceptual hashes,Images,Controls strictness vs. recall for near-duplicates
+9,"Deep embedding / CNN similarity (CLIP, ResNet, custom models)",High-dimensional feature vectors + cosine similarity,Images (and increasingly video frames),"Catches semantic near-duplicates (different angles, heavy edits, re-shoots) that pHash misses"
+10,"Fuzzy / similarity hashing (ssdeep, TLSH, sdhash)",Context-triggered piecewise hashing for near-identical binaries or text,"Binaries, documents, archives","Detects minor modifications, malware variants, or edited text"
+11,Metadata / EXIF / tag comparison,"Match on EXIF timestamps, camera model, GPS, ID3 tags, document properties, etc.","Images, audio, documents",Fast pre-filter or secondary signal (dupeGuru Picture/Music modes)
+12,Filename / path fuzzy matching,Edit-distance or token-based similarity on names and directory structure,All,Complements content matching; useful for renamed copies
+13,Audio fingerprinting (chromaprint / AcoustID style),Perceptual audio signatures independent of encoding or bitrate,"Audio (MP3, FLAC, etc.)",Detects same track at different bitrates or slight edits
+14,Video keyframe / perceptual fingerprinting,Extract and hash representative frames or use video-specific hashes,Video,Extends image techniques to temporal media
+15,Inline vs. post-process timing,Deduplicate on write (inline) or as background job (post-process),All (storage systems),"Trade-off between write latency and CPU overhead (Windows Server, many appliances)"
+16,Global / cross-volume / source-side vs. target-side scope,Single global index vs. per-volume; client-side vs. appliance-side,All (enterprise),Maximizes ratio across large estates; common in backup and primary storage
+17,Similarity reduction / delta encoding,Store baseline + byte-level deltas for highly similar blocks,All (advanced storage),"Beyond exact matches (e.g., HPE similarity reduction)"
+18,Hard-link / soft-link / reflink awareness,Detect and optionally convert duplicates to links instead of deletion,All (filesystem-aware tools),"Space-efficient alternative to deletion (jdupes, rmlint, ZFS)"
+19,Multi-criteria / weighted scoring & policy engine,"Combine size, hash, perceptual score, metadata, age, location into ranked groups with keep/delete rules",All,"Power-user and enterprise tools (AllDup, dupeGuru, backup policy engines)"
+20,Index optimization & locality-aware lookup,"Bloom filters, caching, chunk locality, hierarchical indexes to keep memory/I/O low",All (large-scale systems),"Critical for scalability (Data Domain-style multi-tier indexes, UDS, etc.)"
+
+Create a technical document in how this can be carried out, implemented etc.  create several mockups of the app before we begin.
+
+
+

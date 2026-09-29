@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtualenv
+.venv/
+venv/
+
+# Tooling
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Editors / OS
+*.swp
+.DS_Store
+
+# Local Claude settings (permissions are deployed by the user)
+.claude/settings.local.json

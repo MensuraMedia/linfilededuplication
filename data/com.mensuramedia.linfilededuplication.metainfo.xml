@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.mensuramedia.linfilededuplication</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-CC-BY-NC-4.0</project_license>
+  <name>DedupeDash</name>
+  <summary>Find and safely remove duplicate and near-duplicate files</summary>
+  <developer id="com.mensuramedia">
+    <name>MensuraMedia</name>
+  </developer>
+  <description>
+    <p>
+      DedupeDash finds exact duplicate files and visually similar images across a folder,
+      then lets you remove the extras safely. Nothing is changed until you review the
+      duplicate groups and confirm; removals move to Trash by default and can be replaced
+      with hard links instead.
+    </p>
+    <p>Highlights:</p>
+    <ul>
+      <li>Exact matching by size, progressive hash and SHA-256 with byte-for-byte verification</li>
+      <li>Image near-duplicate detection by perceptual hash, keeping the highest-resolution copy</li>
+      <li>Simple and Advanced scan tiers, dry-run preview, hard-link and Trash actions</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.mensuramedia.linfilededuplication.desktop</launchable>
+  <url type="homepage">https://github.com/MensuraMedia/linfilededuplication</url>
+  <url type="bugtracker">https://github.com/MensuraMedia/linfilededuplication/issues</url>
+  <categories>
+    <category>Utility</category>
+    <category>FileTools</category>
+  </categories>
+  <keywords>
+    <keyword>duplicate</keyword>
+    <keyword>deduplication</keyword>
+    <keyword>images</keyword>
+    <keyword>cleanup</keyword>
+  </keywords>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>linfilededuplication</binary>
+  </provides>
+  <releases>
+    <release version="0.1.0" date="2026-09-29">
+      <description>
+        <p>First foundation: GTK 4 + libadwaita shell, exact-match engine, image near-duplicates, and safe actions.</p>
+      </description>
+    </release>
+  </releases>
+</component>

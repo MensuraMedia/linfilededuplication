@@ -1,0 +1,69 @@
+/* DedupeDash component styles. Colours come from libadwaita named colours, so light/dark
+ * and the user's accent are handled automatically. Only app-* classes are styled. */
+
+.lfd-window { }
+
+/* sidebar */
+.app-sidebar {
+  background-color: @sidebar_bg_color;
+  border-right: 1px solid alpha(@window_fg_color, 0.12);
+}
+.app-sidebar .navigation-sidebar { background: transparent; padding: 4px 6px; }
+.app-logo { padding: 12px 14px 10px 16px; }
+.app-logo-mark { color: @accent_bg_color; }
+.app-logo-name { font-weight: 800; }
+.app-count {
+  background-color: @accent_bg_color; color: @accent_fg_color;
+  border-radius: 9px; padding: 0 7px; font-size: 0.78em; font-weight: 800;
+}
+.app-sidebar-heading {
+  font-size: 0.72em; font-weight: 800; letter-spacing: 1px;
+  margin: 6px 16px 2px; opacity: 0.6;
+}
+.app-footer { border-top: 1px solid alpha(@window_fg_color, 0.12); padding: 8px 16px 4px; margin-top: 4px; }
+
+.app-live-dot { min-width: 8px; min-height: 8px; border-radius: 50%; background-color: @success_color; margin: 0 2px; }
+@keyframes app-breathe { 0% { opacity: 0.25; } 50% { opacity: 1; } 100% { opacity: 0.25; } }
+.app-live-dot.running { animation: app-breathe 1.8s ease-in-out infinite; }
+
+/* text + page */
+.page-padded { padding: 22px 26px 28px; }
+.app-page-title { font-size: 1.55em; font-weight: 800; }
+.app-section-title { font-size: 0.8em; font-weight: 800; letter-spacing: 0.5px; opacity: 0.6; }
+.app-dim { opacity: 0.62; }
+.app-small { font-size: 0.9em; }
+.app-mono { font-family: monospace; }
+.app-accent { color: @accent_bg_color; }
+
+/* tiles + cards */
+.app-tile, .app-card {
+  background-color: @card_bg_color;
+  border: 1px solid alpha(@window_fg_color, 0.10);
+  border-radius: 12px; padding: 14px;
+}
+.app-stat-num { font-size: 1.7em; font-weight: 800; }
+
+/* progress */
+.app-progress trough { min-height: 8px; border-radius: 4px; }
+.app-progress progress { min-height: 8px; border-radius: 4px; background-color: @accent_bg_color; }
+
+/* duplicate groups */
+.app-group {
+  background-color: @card_bg_color;
+  border: 1px solid alpha(@window_fg_color, 0.10);
+  border-radius: 12px;
+}
+.app-group-header { padding: 10px 15px; border-bottom: 1px solid alpha(@window_fg_color, 0.10); }
+.app-group-title { font-weight: 700; }
+.app-file-row { padding: 9px 15px; border-bottom: 1px solid alpha(@window_fg_color, 0.07); }
+.app-file-row:last-child { border-bottom: 0; }
+.app-keep { background-color: alpha(@accent_bg_color, 0.09); }
+.app-thumb { border-radius: 7px; }
+
+/* badges */
+.app-kind-exact, .app-kind-image, .app-keepbadge {
+  font-size: 0.72em; font-weight: 800; border-radius: 6px; padding: 2px 8px;
+}
+.app-kind-exact { background-color: alpha(@accent_bg_color, 0.18); color: @accent_bg_color; }
+.app-kind-image { background-color: alpha(@success_color, 0.20); color: @success_color; }
+.app-keepbadge { background-color: alpha(@accent_bg_color, 0.16); color: @accent_bg_color; border-radius: 999px; }
