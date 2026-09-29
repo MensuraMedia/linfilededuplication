@@ -6,6 +6,7 @@ from gi.repository import Adw, Gtk
 from linfilededuplication.core.options import TIER_ADVANCED, TIER_SIMPLE, ScanOptions
 from linfilededuplication.i18n import _
 from linfilededuplication.ui.pages.base import BasePage
+from linfilededuplication.ui.widgets.info_hint import InfoHint
 
 
 class ScanPage(BasePage):
@@ -44,6 +45,7 @@ class ScanPage(BasePage):
         self.sw_images = Adw.SwitchRow(title=_("Find image near-duplicates"),
                                        subtitle=_("Perceptual hash, within the similarity threshold"))
         self.sw_images.set_active(s.find_images)
+        self.sw_images.add_prefix(InfoHint(self.window, "near-duplicate"))
         grp.add(self.sw_images)
 
         self.sw_hidden = Adw.SwitchRow(title=_("Include hidden files"),
@@ -54,6 +56,7 @@ class ScanPage(BasePage):
         self.min_row = Adw.SpinRow.new_with_range(0, 1024, 1)
         self.min_row.set_title(_("Minimum file size (MB)"))
         self.min_row.set_value(s.min_size_mb)
+        self.min_row.add_prefix(InfoHint(self.window, "min-size"))
         grp.add(self.min_row)
         self.add(grp)
 
@@ -99,13 +102,18 @@ class ScanPage(BasePage):
             self.folder_row.set_subtitle(self.root)
 
     def _options(self) -> ScanOptions:
+        s = self.app.settings
         return ScanOptions(
             root=self.root,
             tier=self.tier,
             find_images=self.sw_images.get_active(),
             include_hidden=self.sw_hidden.get_active(),
             min_size=max(1, int(self.min_row.get_value()) * 1_000_000),
-            hamming=self.app.settings.hamming,
+            hamming=s.hamming,
+            detect_backups=s.detect_backups,
+            keep_newest_backup=s.keep_newest_backup,
+            exclusions=list(s.exclusions),
+            exclude=list(getattr(s, "custom_excludes", [])),
         )
 
     def _on_run_clicked(self, _btn) -> None:

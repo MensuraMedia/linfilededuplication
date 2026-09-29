@@ -46,12 +46,39 @@ you review the duplicate groups and confirm, and removals go to Trash by default
 - Move to Trash (recoverable), hard-link, or dry-run — your choice
 - Protected system paths are refused; a group's keeper can never be deleted
 
+**Confidence & guidance**
+- **SpotCheck** — a large side-by-side view that shows each file's real content (image
+  previews or document snippets) so you can confirm duplicates before removing them
+- **Probable backup** markers with a clear **Newest / Older** indication, so you can keep the
+  most recent backup and clear out the stale ones
+- **Info icons** throughout — hover or focus the `(i)` for a plain-language explanation of any
+  term, file kind, or action
+- **Scan scope** presets that skip system files, caches, and other app- or OS-recreatable
+  files (excluded paths are never removed)
+- A searchable, offline **Knowledge** page defining every term you meet
+
 **Desktop-native**
 - GTK 4 + libadwaita, automatic light/dark, the accent you set in GNOME/Cinnamon
 - Keyboard-navigable, screen-reader labels, responsive layout
 - Runs entirely locally — no accounts, no network, no telemetry
 
 ## Screenshots
+
+### SpotCheck — confirm before you remove
+
+![SpotCheck](docs/screenshots/spotcheck.png)
+
+### Backups, guidance and scan scope
+
+| Backups in Results | Knowledge (glossary + FAQ) |
+| --- | --- |
+| ![Results with backups](docs/screenshots/results-backups.png) | ![Knowledge](docs/screenshots/knowledge.png) |
+
+| Scan scope & backup settings | |
+| --- | --- |
+| ![Scan scope](docs/screenshots/settings-scope.png) | |
+
+### The basics
 
 | Overview | Scan |
 | --- | --- |

@@ -3,11 +3,15 @@ from __future__ import annotations
 
 from gi.repository import Adw, Gtk
 
+from linfilededuplication.core import exclusions
 from linfilededuplication.i18n import _
 from linfilededuplication.ui.pages.base import BasePage
+from linfilededuplication.ui.widgets.info_hint import InfoHint
 
 _STYLES = ["system", "light", "dark"]
 _ACTIONS = ["trash", "hardlink"]
+_PRESET_HINT = {"system": "system-file", "caches": "cache", "build": "package-artifact",
+                "vcs": "exclusions", "apps": "exclusions", "stubs": "exclusions", "trash": "trash"}
 
 
 class SettingsPage(BasePage):
@@ -49,6 +53,34 @@ class SettingsPage(BasePage):
         safety.add(self.dry_row)
         self.add(safety)
 
+        backups = Adw.PreferencesGroup(title=_("Backups"))
+        self.backup_row = Adw.SwitchRow(title=_("Flag probable backups"),
+                                        subtitle=_("Mark older saved copies so you can clear stale ones"))
+        self.backup_row.set_active(s.detect_backups)
+        self.backup_row.add_prefix(InfoHint(self.window, "backup-file"))
+        self.backup_row.connect("notify::active", self._on_backup)
+        backups.add(self.backup_row)
+        self.newest_row = Adw.SwitchRow(title=_("For backups, keep the newest"),
+                                        subtitle=_("Suggest keeping the most recent copy"))
+        self.newest_row.set_active(s.keep_newest_backup)
+        self.newest_row.add_prefix(InfoHint(self.window, "newest-older"))
+        self.newest_row.connect("notify::active", self._on_newest)
+        backups.add(self.newest_row)
+        self.add(backups)
+
+        scope = Adw.PreferencesGroup(
+            title=_("Scan scope"),
+            description=_("Skip files an app or the OS can recreate. Excluded paths are never removed."))
+        self._preset_rows = {}
+        for key in exclusions.PRESETS:
+            row = Adw.SwitchRow(title=exclusions.preset_label(key))
+            row.set_active(key in s.exclusions)
+            row.add_prefix(InfoHint(self.window, _PRESET_HINT.get(key, "exclusions")))
+            row.connect("notify::active", self._on_preset, key)
+            self._preset_rows[key] = row
+            scope.add(row)
+        self.add(scope)
+
     def _save(self) -> None:
         self.app.settings.save()
 
@@ -68,4 +100,22 @@ class SettingsPage(BasePage):
 
     def _on_dry(self, *_a) -> None:
         self.app.settings.dry_run = self.dry_row.get_active()
+        self._save()
+
+    def _on_backup(self, *_a) -> None:
+        self.app.settings.detect_backups = self.backup_row.get_active()
+        self._save()
+
+    def _on_newest(self, *_a) -> None:
+        self.app.settings.keep_newest_backup = self.newest_row.get_active()
+        self._save()
+
+    def _on_preset(self, row, _p, key) -> None:
+        current = set(self.app.settings.exclusions)
+        if row.get_active():
+            current.add(key)
+        else:
+            current.discard(key)
+        # preserve preset order
+        self.app.settings.exclusions = [k for k in exclusions.PRESETS if k in current]
         self._save()

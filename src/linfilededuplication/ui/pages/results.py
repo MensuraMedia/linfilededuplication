@@ -9,6 +9,7 @@ from linfilededuplication.i18n import _
 from linfilededuplication.services import actions
 from linfilededuplication.ui.pages.base import BasePage
 from linfilededuplication.ui.widgets.common import badge, icon
+from linfilededuplication.ui.widgets.info_hint import InfoHint
 
 
 class ResultsPage(BasePage):
@@ -90,6 +91,10 @@ class ResultsPage(BasePage):
             header.append(badge(_("IMAGES · Δ{d}").format(d=group.distance), "app-kind-image"))
         else:
             header.append(badge(_("EXACT · SHA-256"), "app-kind-exact"))
+        header.append(InfoHint(self.window, "match-kind"))
+        if group.has_backups:
+            header.append(badge(_("Backups"), "app-kind-image"))
+            header.append(InfoHint(self.window, "backup-file"))
         title = Gtk.Label(label=group.title, xalign=0.0, hexpand=True)
         title.add_css_class("app-group-title")
         title.set_ellipsize(3)  # PANGO_ELLIPSIZE_END
@@ -97,8 +102,12 @@ class ResultsPage(BasePage):
             label=_("{n} files · reclaim {b}").format(n=group.count, b=human_bytes(group.reclaimable)))
         meta.add_css_class("app-dim")
         meta.add_css_class("app-small")
-        header.append(title)
+        spot = Gtk.Button(label=_("SpotCheck"))
+        spot.add_css_class("flat")
+        spot.set_valign(Gtk.Align.CENTER)
+        spot.connect("clicked", lambda _b, g=group: self.window.open_spotcheck(g, self._on_spotcheck_applied))
         header.append(meta)
+        header.append(spot)
         card.append(header)
 
         for f in group.files:
@@ -141,6 +150,8 @@ class ResultsPage(BasePage):
         size = Gtk.Label(label=human_bytes(f.size))
         size.add_css_class("app-mono")
         row.append(size)
+        if f.is_backup:
+            row.append(badge(_("Newest") if f.is_newest else _("Older"), "app-keepbadge"))
         if f.keeper:
             kb = badge(_("Keep · highest resolution") if group.kind == KIND_IMAGE else _("Keep"),
                        "app-keepbadge")
@@ -229,8 +240,14 @@ class ResultsPage(BasePage):
             self.window.toast(err)
 
     def _apply_removed(self, sel) -> None:
+        self._remove_by_ids({id(f) for _r, f in sel})
+
+    def _on_spotcheck_applied(self, files) -> None:
+        """SpotCheck removed these files; reflect it in the Results list."""
+        self._remove_by_ids({id(f) for f in files})
+
+    def _remove_by_ids(self, removed) -> None:
         """Drop the acted-on files so they cannot be selected again, and grey their checkbox."""
-        removed = {id(f) for _r, f in sel}
         for rec in self._groups:
             for check, f in rec["checks"]:
                 if id(f) in removed:

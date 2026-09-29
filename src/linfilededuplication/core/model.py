@@ -18,6 +18,10 @@ class FileEntry:
     height: int = 0
     full_hash: str = ""
     keeper: bool = False        # policy decided this is the file to keep
+    is_backup: bool = False     # looks like a backup copy
+    backup_confidence: float = 0.0
+    effective_date: float = 0.0  # embedded date in name, else mtime
+    is_newest: bool = False     # the most recent file in a backup group
 
     @property
     def name(self) -> str:
@@ -42,6 +46,7 @@ class DuplicateGroup:
     key: str                        # hash digest, or a perceptual cluster id
     files: list[FileEntry] = field(default_factory=list)
     distance: int = 0               # max perceptual Hamming distance within the group
+    has_backups: bool = False       # at least one member looks like a backup
 
     @property
     def count(self) -> int:

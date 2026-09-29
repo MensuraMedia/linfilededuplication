@@ -104,6 +104,16 @@ class MainWindow(Adw.ApplicationWindow):
     def toast(self, text: str) -> None:
         self.toasts.add_toast(Adw.Toast.new(text))
 
+    def open_knowledge(self, term_key: str) -> None:
+        self.show_page("knowledge")
+        page = self.pages.get("knowledge")
+        if page is not None:
+            page.focus(term_key)
+
+    def open_spotcheck(self, group, on_applied=None) -> None:
+        from linfilededuplication.ui.pages.spotcheck import SpotCheckDialog
+        SpotCheckDialog(self, group, on_applied).present(self)
+
     def _on_scan_started(self, _c, _root: str) -> None:
         self._group_count = 0
         self.sidebar.set_count("results", 0)

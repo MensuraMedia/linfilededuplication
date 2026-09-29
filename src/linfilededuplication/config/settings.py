@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from linfilededuplication import APP_ID
+from linfilededuplication.core.exclusions import DEFAULT_ON
 
 SCHEMA = 1
 
@@ -28,6 +29,9 @@ class Settings:
     hamming: int = 8
     default_action: str = "trash"   # trash | hardlink
     dry_run: bool = True
+    detect_backups: bool = True
+    keep_newest_backup: bool = True
+    exclusions: list[str] = field(default_factory=lambda: list(DEFAULT_ON))
 
     @classmethod
     def load(cls) -> "Settings":

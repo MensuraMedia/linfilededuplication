@@ -51,6 +51,8 @@ class DedupeApp(Adw.Application):
         from linfilededuplication.ui.theme_loader import ThemeLoader
         self.theme = ThemeLoader(data_path("css", "app.css"))
         self.theme.apply(self.settings.style)
+        from linfilededuplication.core.glossary import Glossary
+        self.glossary = Glossary.load(data_path("glossary", "en.json"))
         for name, cb in (("quit", lambda *_: self.quit()), ("about", self._about)):
             act = Gio.SimpleAction.new(name, None)
             act.connect("activate", cb)

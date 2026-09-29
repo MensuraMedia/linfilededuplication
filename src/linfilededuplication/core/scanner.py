@@ -13,7 +13,7 @@ import time
 from collections import defaultdict
 from typing import Callable
 
-from linfilededuplication.core import events, hashers, image_perceptual, policy
+from linfilededuplication.core import backup_detect, events, exclusions, hashers, image_perceptual, policy
 from linfilededuplication.core.model import KIND_EXACT, DuplicateGroup, FileEntry
 from linfilededuplication.core.options import ScanOptions
 
@@ -28,6 +28,7 @@ def _is_hidden(name: str) -> bool:
 def walk(opts: ScanOptions, cancel: threading.Event | None = None) -> list[FileEntry]:
     """Collect files under ``opts.root`` honouring hidden/min-size/symlink options."""
     out: list[FileEntry] = []
+    matcher = exclusions.compile(opts.exclusions, opts.exclude)
     stack = [opts.root]
     while stack:
         if cancel is not None and cancel.is_set():
@@ -41,8 +42,11 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None) -> list[FileE
                         continue
                     try:
                         if de.is_dir(follow_symlinks=opts.follow_symlinks):
-                            stack.append(de.path)
+                            if not matcher.excludes(de.path, True):
+                                stack.append(de.path)
                         elif de.is_file(follow_symlinks=opts.follow_symlinks):
+                            if matcher.excludes(de.path, False):
+                                continue
                             st = de.stat(follow_symlinks=opts.follow_symlinks)
                             if st.st_size < opts.min_size:
                                 continue
@@ -97,7 +101,9 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
                 if opts.verify_bytes and not hashers.bytes_equal([m.path for m in members]):
                     continue
                 grp = DuplicateGroup(kind=KIND_EXACT, key=digest, files=list(members))
-                policy.rank(grp)
+                if opts.detect_backups:
+                    backup_detect.analyze_group(grp)
+                policy.rank(grp, keep_newest=opts.keep_newest_backup)
                 groups.append(grp)
                 emit(events.GroupFound(grp))
     emit(events.Progress(to_hash, to_hash, "hash", "Exact matching done"))
@@ -123,7 +129,9 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
             img_groups = image_perceptual.find_similar_groups(
                 images, opts.hamming, emit, cancel)
             for grp in img_groups:
-                policy.rank(grp)
+                if opts.detect_backups:
+                    backup_detect.analyze_group(grp)
+                policy.rank(grp, keep_newest=opts.keep_newest_backup)
                 emit(events.GroupFound(grp))
             groups = groups + img_groups
 

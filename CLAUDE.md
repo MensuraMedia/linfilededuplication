@@ -54,7 +54,16 @@ Rules of the house:
 - `.claude/memory/` holds decisions and change manifests; `.claude/rules/` holds the
   path-scoped core-purity and python-gtk rules.
 
+## SpotCheck & guidance (see docs/SPOTCHECK.md)
+
+- `core/exclusions.py` — scan-scope presets + custom globs (used in `walk()`).
+- `core/backup_detect.py` — Probable-backup signals + keep-newest ranking.
+- `core/preview.py` — read-only, budgeted content previews for SpotCheck.
+- `core/glossary.py` + `data/glossary/en.json` — terms/FAQ for the Knowledge page and InfoHint.
+- `ui/widgets/info_hint.py`, `ui/pages/knowledge.py`, `ui/pages/spotcheck.py`.
+
 ## Status
 
-P0 foundation + working exact-match engine + image near-duplicates + Simple Scan UI +
-safe actions. Roadmap P1–P9 in `docs/CONCEPT.md`.
+P0 foundation + exact engine + image near-duplicates + Simple Scan UI + safe actions, plus
+SpotCheck, backup awareness, scan exclusions, info icons and the Knowledge page. 25 tests
+passing. Roadmap in `docs/CONCEPT.md`; feature notes in `docs/SPOTCHECK.md`.
