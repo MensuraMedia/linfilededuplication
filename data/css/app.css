@@ -23,7 +23,7 @@
   font-size: 0.72em; font-weight: 800; letter-spacing: 1px;
   margin: 6px 16px 2px; opacity: 0.6;
 }
-.app-footer { border-top: 1px solid alpha(@window_fg_color, 0.12); padding: 8px 16px 4px; margin-top: 4px; margin-bottom: 12px; }
+.app-footer { border-top: 1px solid alpha(@window_fg_color, 0.12); padding: 8px 16px 4px; margin-top: 4px; margin-bottom: 22px; }
 
 .app-live-dot { min-width: 8px; min-height: 8px; border-radius: 50%; background-color: @success_color; margin: 0 2px; }
 @keyframes app-breathe { 0% { opacity: 0.25; } 50% { opacity: 1; } 100% { opacity: 0.25; } }
