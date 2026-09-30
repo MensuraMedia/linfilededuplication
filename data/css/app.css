@@ -62,6 +62,8 @@
 .app-file-row:last-child { border-bottom: 0; }
 .app-keep { background-color: alpha(@accent_bg_color, 0.09); }
 .app-thumb { border-radius: 7px; }
+.app-pdf-nav { padding: 2px 4px; }
+.app-pdf-nav button.flat { min-height: 24px; padding: 2px 8px; }
 
 /* info hint */
 .app-info-hint { min-width: 22px; min-height: 22px; padding: 0; opacity: 0.7; }

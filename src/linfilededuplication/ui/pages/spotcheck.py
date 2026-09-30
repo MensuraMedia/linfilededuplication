@@ -5,7 +5,7 @@ confirm the copies before acting. A gate, not an actor: closing it changes nothi
 """
 from __future__ import annotations
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gdk, Gtk
 
 from linfilededuplication.core import preview as previewmod
 from linfilededuplication.core.model import KIND_IMAGE, DuplicateGroup, FileEntry
@@ -24,6 +24,7 @@ class SpotCheckDialog(Adw.Dialog):
         self.on_applied = on_applied
         self._checks: list[tuple[Gtk.CheckButton, FileEntry]] = []
         self._tmp_dirs: list[str] = []
+        self._pdf_pagers: list = []         # per-PDF page setters, driven together for A/B compare
         self.connect("closed", self._cleanup)
         self.set_title(_("SpotCheck"))
         self.set_content_width(920)
@@ -149,25 +150,92 @@ class SpotCheckDialog(Adw.Dialog):
         return sw
 
     def _pdf_view(self, path: str) -> Gtk.Widget | None:
-        """Render the actual PDF pages (via pdftoppm) into a scrollable page stack."""
+        """A one-page-at-a-time PDF viewer for side-by-side comparison.
+
+        Shows a single rendered page (via pdftoppm) that fills the panel, with Previous/Next
+        and an actual-size zoom toggle. Paging is synced across every PDF panel by
+        ``_set_all_pages``, so page N sits beside page N for a true A/B check.
+        """
         pages = self._render_pdf_pages(path)
         if not pages:
             return None
-        sw = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
-        sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        box.set_margin_top(8)
-        box.set_margin_bottom(8)
-        box.set_margin_start(8)
-        box.set_margin_end(8)
-        for png in pages:
-            pic = Gtk.Picture.new_for_filename(png)
-            pic.set_content_fit(Gtk.ContentFit.CONTAIN)
-            pic.set_can_shrink(True)
-            pic.add_css_class("app-thumb")
-            box.append(pic)
-        sw.set_child(box)
-        return sw
+        n = len(pages)
+        cache: dict[int, Gdk.Texture] = {}
+
+        def tex(i: int):
+            if i not in cache:
+                try:
+                    cache[i] = Gdk.Texture.new_from_filename(pages[i])
+                except Exception:
+                    cache[i] = None
+            return cache[i]
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, hexpand=True, vexpand=True)
+        pic = Gtk.Picture(hexpand=True, vexpand=True)
+        pic.set_content_fit(Gtk.ContentFit.CONTAIN)
+        pic.set_can_shrink(True)
+        pic.add_css_class("app-thumb")
+        scroll = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_child(pic)
+        outer.append(scroll)
+
+        nav = Gtk.Box(spacing=6, halign=Gtk.Align.CENTER)
+        nav.add_css_class("app-pdf-nav")
+        prev = Gtk.Button(label=_("‹ Prev"))
+        prev.add_css_class("flat")
+        indicator = Gtk.Label()
+        indicator.add_css_class("app-small")
+        indicator.add_css_class("app-dim")
+        indicator.set_width_chars(12)
+        nxt = Gtk.Button(label=_("Next ›"))
+        nxt.add_css_class("flat")
+        zoom = Gtk.ToggleButton(label=_("Actual size"))
+        zoom.add_css_class("flat")
+        zoom.add_css_class("app-small")
+        nav.append(prev)
+        nav.append(indicator)
+        nav.append(nxt)
+        nav.append(zoom)
+        outer.append(nav)
+
+        state = {"i": 0}
+
+        def apply_zoom() -> None:
+            t = tex(state["i"])
+            if zoom.get_active() and t is not None:
+                pic.set_can_shrink(False)
+                pic.set_content_fit(Gtk.ContentFit.FILL)
+                pic.set_size_request(t.get_width(), t.get_height())
+            else:
+                pic.set_can_shrink(True)
+                pic.set_content_fit(Gtk.ContentFit.CONTAIN)
+                pic.set_size_request(-1, -1)
+
+        def render() -> None:
+            t = tex(state["i"])
+            if t is not None:
+                pic.set_paintable(t)
+            indicator.set_text(_("Page {a} / {b}").format(a=state["i"] + 1, b=n))
+            prev.set_sensitive(state["i"] > 0)
+            nxt.set_sensitive(state["i"] < n - 1)
+            apply_zoom()
+
+        def goto(i: int) -> None:                 # clamp to THIS file's page count, then draw
+            state["i"] = max(0, min(n - 1, i))
+            render()
+
+        prev.connect("clicked", lambda _b: self._set_all_pages(state["i"] - 1))
+        nxt.connect("clicked", lambda _b: self._set_all_pages(state["i"] + 1))
+        zoom.connect("toggled", lambda _b: apply_zoom())
+        self._pdf_pagers.append(goto)
+        render()
+        return outer
+
+    def _set_all_pages(self, i: int) -> None:
+        """Move every PDF panel to page ``i`` (each clamps to its own length)."""
+        for goto in self._pdf_pagers:
+            goto(i)
 
     def _render_pdf_pages(self, path: str, max_pages: int = 15, dpi: int = 120) -> list[str]:
         import glob
