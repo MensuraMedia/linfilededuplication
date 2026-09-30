@@ -175,10 +175,7 @@ class ResultsPage(BasePage):
         path.add_css_class("app-dim")
         path.add_css_class("app-small")
         path.set_ellipsize(3)
-        path.set_tooltip_text(_("{p}\nRight-click for options").format(p=f.path))
-        gesture = Gtk.GestureClick(button=3)     # right-click -> Explore here / Copy / Open
-        gesture.connect("pressed", lambda _g, _n, x, y, ff=f, w=path: self._show_path_menu(w, ff, x, y))
-        path.add_controller(gesture)
+        path.set_tooltip_text(_("{p}\nRight-click the row for options").format(p=f.path))
         row.append(path)
 
         # column 4: "Keep" + green circle, or "Delete" + red check.
@@ -207,6 +204,10 @@ class ResultsPage(BasePage):
         sel.append(marker)
         sel_sg.add_widget(sel)
         row.append(sel)
+        # right-click anywhere on the row -> Explore here / Open file / Copy path for THIS file
+        gesture = Gtk.GestureClick(button=3)
+        gesture.connect("pressed", lambda _g, _n, x, y, ff=f: self._show_path_menu(row, ff, x, y))
+        row.add_controller(gesture)
         return row
 
     def _thumb(self, f: FileEntry) -> Gtk.Widget:
@@ -246,6 +247,7 @@ class ResultsPage(BasePage):
         item(_("Open file"), lambda: actions.open_file(f.path))
         item(_("Copy path"), lambda: self._copy_path(f.path))
         pop.set_child(box)
+        pop.connect("closed", lambda p: p.unparent())
         pop.popup()
 
     def _copy_path(self, path: str) -> None:

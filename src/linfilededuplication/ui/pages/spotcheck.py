@@ -23,6 +23,8 @@ class SpotCheckDialog(Adw.Dialog):
         self.group = group
         self.on_applied = on_applied
         self._checks: list[tuple[Gtk.CheckButton, FileEntry]] = []
+        self._tmp_dirs: list[str] = []
+        self.connect("closed", self._cleanup)
         self.set_title(_("SpotCheck"))
         self.set_content_width(920)
         self.set_content_height(640)
@@ -125,20 +127,67 @@ class SpotCheckDialog(Adw.Dialog):
             pic.set_hexpand(True)
             pic.set_vexpand(True)
             frame.set_child(pic)
+        elif pv.kind == previewmod.KIND_PDF and pv.image_path:
+            view = self._pdf_view(pv.image_path)
+            frame.set_child(view if view is not None else self._text_view(pv))
         else:
-            sw = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
-            sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-            lbl = Gtk.Label(label=pv.text or pv.note or _("No preview"), xalign=0.0, yalign=0.0,
-                            wrap=True, hexpand=True)
-            lbl.add_css_class("app-mono")
-            lbl.add_css_class("app-small")
-            lbl.set_margin_top(8)
-            lbl.set_margin_bottom(8)
-            lbl.set_margin_start(8)
-            lbl.set_margin_end(8)
-            sw.set_child(lbl)
-            frame.set_child(sw)
+            frame.set_child(self._text_view(pv))
         return frame
+
+    def _text_view(self, pv) -> Gtk.Widget:
+        sw = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
+        sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        lbl = Gtk.Label(label=pv.text or pv.note or _("No preview"), xalign=0.0, yalign=0.0,
+                        wrap=True, hexpand=True)
+        lbl.add_css_class("app-mono")
+        lbl.add_css_class("app-small")
+        lbl.set_margin_top(8)
+        lbl.set_margin_bottom(8)
+        lbl.set_margin_start(8)
+        lbl.set_margin_end(8)
+        sw.set_child(lbl)
+        return sw
+
+    def _pdf_view(self, path: str) -> Gtk.Widget | None:
+        """Render the actual PDF pages (via pdftoppm) into a scrollable page stack."""
+        pages = self._render_pdf_pages(path)
+        if not pages:
+            return None
+        sw = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
+        sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_margin_top(8)
+        box.set_margin_bottom(8)
+        box.set_margin_start(8)
+        box.set_margin_end(8)
+        for png in pages:
+            pic = Gtk.Picture.new_for_filename(png)
+            pic.set_content_fit(Gtk.ContentFit.CONTAIN)
+            pic.set_can_shrink(True)
+            pic.add_css_class("app-thumb")
+            box.append(pic)
+        sw.set_child(box)
+        return sw
+
+    def _render_pdf_pages(self, path: str, max_pages: int = 15, dpi: int = 120) -> list[str]:
+        import glob
+        import subprocess
+        import tempfile
+        outdir = tempfile.mkdtemp(prefix="lfd-pdf-")
+        self._tmp_dirs.append(outdir)
+        prefix = f"{outdir}/p"
+        try:
+            subprocess.run(["pdftoppm", "-png", "-f", "1", "-l", str(max_pages), "-r", str(dpi),
+                            path, prefix], capture_output=True, timeout=25)
+        except Exception:
+            return []
+        return sorted(glob.glob(prefix + "*.png"))
+
+    def _cleanup(self, *_a) -> None:
+        import shutil
+        for d in self._tmp_dirs:
+            shutil.rmtree(d, ignore_errors=True)
+        self._tmp_dirs = []
 
     def _selected(self) -> list[FileEntry]:
         return [f for c, f in self._checks if c.get_active()]

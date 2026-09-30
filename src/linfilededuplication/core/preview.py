@@ -17,6 +17,7 @@ from linfilededuplication.core.units import human_bytes
 KIND_IMAGE = "image"
 KIND_TEXT = "text"
 KIND_META = "meta"
+KIND_PDF = "pdf"        # render the actual pages (UI), with text as a fallback
 
 MAX_BYTES = 64 * 1024
 MAX_LINES = 200
@@ -136,7 +137,9 @@ def preview(path: str) -> Preview:
         if ext in _IMAGE_EXT:
             return Preview(KIND_IMAGE, os.path.basename(path), image_path=path)
         if ext == ".pdf":
-            return _pdf_snippet(path)
+            snip = _pdf_snippet(path)       # text fallback if page rendering is unavailable
+            return Preview(KIND_PDF, os.path.basename(path), image_path=path,
+                           text=snip.text, note=snip.note)
         if ext in _OFFICE_EXT:
             return _office_snippet(path)
         if ext in _ARCHIVE_EXT:
