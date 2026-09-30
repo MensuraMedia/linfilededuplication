@@ -62,7 +62,7 @@ cat > "$BUILD/DEBIAN/postinst" <<'EOF'
 #!/bin/sh
 set -e
 if which update-desktop-database >/dev/null 2>&1; then update-desktop-database -q || true; fi
-if which gtk-update-icon-cache >/dev/null 2>&1; then gtk-update-icon-cache -q /usr/share/icons/hicolor || true; fi
+if which gtk-update-icon-cache >/dev/null 2>&1; then gtk-update-icon-cache -q -f /usr/share/icons/hicolor || true; fi
 EOF
 cp "$BUILD/DEBIAN/postinst" "$BUILD/DEBIAN/postrm"
 chmod 755 "$BUILD/DEBIAN/postinst" "$BUILD/DEBIAN/postrm"

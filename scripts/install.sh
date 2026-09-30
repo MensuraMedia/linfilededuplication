@@ -25,6 +25,15 @@ $SUDO cp "$ROOT/data/$APPID.desktop" "$PREFIX/share/applications/"
 $SUDO cp "$ROOT/data/$APPID.metainfo.xml" "$PREFIX/share/metainfo/"
 $SUDO cp -r "$ROOT/data/icons/hicolor" "$PREFIX/share/icons/"
 
+# hicolor needs an index.theme, or the panel/menu/tray can't resolve the icon (falls back to a gear).
+if [ ! -f "$PREFIX/share/icons/hicolor/index.theme" ]; then
+  if [ -f /usr/share/icons/hicolor/index.theme ]; then
+    $SUDO cp /usr/share/icons/hicolor/index.theme "$PREFIX/share/icons/hicolor/index.theme"
+  else
+    printf '[Icon Theme]\nName=Hicolor\nComment=Fallback\nDirectories=scalable/apps,16x16/apps,22x22/apps,24x24/apps,32x32/apps,48x48/apps,64x64/apps,128x128/apps,256x256/apps\n\n[scalable/apps]\nSize=48\nMinSize=8\nMaxSize=512\nContext=Applications\nType=Scalable\n' | $SUDO tee "$PREFIX/share/icons/hicolor/index.theme" >/dev/null
+  fi
+fi
+
 # Write a clean installed launcher (no sentinel to accidentally rewrite).
 $SUDO tee "$PREFIX/bin/$PKG" >/dev/null <<LAUNCH
 #!/bin/sh
@@ -35,5 +44,5 @@ LAUNCH
 $SUDO chmod 755 "$PREFIX/bin/$PKG"
 
 which update-desktop-database >/dev/null 2>&1 && $SUDO update-desktop-database -q "$PREFIX/share/applications" || true
-which gtk-update-icon-cache >/dev/null 2>&1 && $SUDO gtk-update-icon-cache -q "$PREFIX/share/icons/hicolor" || true
+which gtk-update-icon-cache >/dev/null 2>&1 && $SUDO gtk-update-icon-cache -f -t "$PREFIX/share/icons/hicolor" >/dev/null 2>&1 || true
 echo "Installed to $PREFIX. Run: $PKG"
