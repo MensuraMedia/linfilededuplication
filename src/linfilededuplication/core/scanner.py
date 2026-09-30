@@ -26,15 +26,32 @@ def _is_hidden(name: str) -> bool:
     return name.startswith(".")
 
 
-def walk(opts: ScanOptions, cancel: threading.Event | None = None) -> list[FileEntry]:
-    """Collect files under ``opts.root`` honouring hidden/min-size/symlink options."""
+def walk(opts: ScanOptions, cancel: threading.Event | None = None,
+         emit: Emit | None = None) -> list[FileEntry]:
+    """Collect files under ``opts.root`` honouring hidden/min-size/symlink options.
+
+    When ``emit`` is given, reports the folder/file currently being scanned as it goes,
+    throttled so the live caption stays readable instead of flooding the UI.
+    """
     out: list[FileEntry] = []
     matcher = exclusions.compile(opts.exclusions, opts.exclude)
     stack = [opts.root]
+    last_tick = 0.0
+
+    def tick(path: str) -> None:
+        nonlocal last_tick
+        if emit is None:
+            return
+        now = time.monotonic()
+        if now - last_tick >= 0.06:          # ~15 updates/sec, enough to read
+            emit(events.Progress(len(out), 0, "walk", path))
+            last_tick = now
+
     while stack:
         if cancel is not None and cancel.is_set():
             break
         current = stack.pop()
+        tick(current)                        # folder being scanned
         try:
             with os.scandir(current) as it:
                 for de in it:
@@ -55,6 +72,7 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None) -> list[FileE
                             out.append(FileEntry(
                                 path=de.path, size=st.st_size, mtime=st.st_mtime,
                                 is_image=ext in _IMAGE_EXT, dev=st.st_dev, ino=st.st_ino))
+                            tick(de.path)    # file going by
                     except OSError:
                         continue
         except OSError:
@@ -84,8 +102,8 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
             except OSError as exc:
                 emit(events.ScanError(f"Could not read {e.name}", "Check file permissions.", e.path))
             done += 1
-            if done % 64 == 0:
-                emit(events.Progress(done, to_hash, "hash", "Hashing candidates"))
+            if done % 32 == 0:
+                emit(events.Progress(done, to_hash, "hash", e.path))
         for same_prefix in by_prefix.values():
             if len(same_prefix) < 2:
                 continue
@@ -123,7 +141,7 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
     """Full run. Emits ScanStarted, Progress, GroupFound*, Finished."""
     start = time.time()
     emit(events.ScanStarted(opts.root))
-    entries = walk(opts, cancel)
+    entries = walk(opts, cancel, emit)
     emit(events.Progress(len(entries), len(entries), "walk", f"Found {len(entries):,} files"))
 
     groups = find_exact_groups(entries, opts, emit, cancel)

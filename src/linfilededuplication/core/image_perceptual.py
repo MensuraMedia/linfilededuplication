@@ -58,8 +58,8 @@ def find_similar_groups(images: list[FileEntry], max_distance: int, emit: Emit,
         if h is not None:
             e.width, e.height = read_dimensions(e.path)
             hashed.append((e, h))
-        if i % 32 == 0:
-            emit(events.Progress(i, len(images), "image", "Perceptual hashing images"))
+        if i % 16 == 0:
+            emit(events.Progress(i, len(images), "image", e.path))
 
     parent = list(range(len(hashed)))
 

@@ -56,6 +56,26 @@ def test_hardlinked_files_not_reported(tmp_path):
     assert not groups                            # one physical file -> nothing to reclaim
 
 
+def test_walk_streams_current_path(tmp_path):
+    sub = tmp_path / "photos"
+    sub.mkdir()
+    (sub / "a.dat").write_bytes(b"x" * 4000)
+    seen: list[events.ScanEvent] = []
+    from linfilededuplication.core.options import ScanOptions as _SO
+    walk(_SO(root=str(tmp_path), min_size=1), None, seen.append)
+    walks = [e for e in seen if isinstance(e, events.Progress) and e.phase == "walk"]
+    assert walks                                     # emitted live progress
+    # the streamed detail names real paths under the scan root
+    assert any(str(tmp_path) in e.detail for e in walks)
+
+
+def test_walk_no_emit_when_callback_absent(tmp_path):
+    (tmp_path / "a.dat").write_bytes(b"x" * 4000)
+    # walk must still work with no emit callback (tests / CLI use it directly)
+    names = {e.name for e in walk(ScanOptions(root=str(tmp_path), min_size=1))}
+    assert "a.dat" in names
+
+
 def test_no_duplicates(tmp_path):
     (tmp_path / "a").write_bytes(b"a" * 3000)
     (tmp_path / "b").write_bytes(b"b" * 3000)

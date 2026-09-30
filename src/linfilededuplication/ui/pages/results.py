@@ -31,6 +31,26 @@ class ResultsPage(BasePage):
         self.spinner = RadarSpinner(100)        # shown below the title while scanning
         spin_box.append(self.spinner)
         self.add(spin_box)
+
+        # live scan caption under the radar: the root/mountpoint, then the file going by
+        cap = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1, halign=Gtk.Align.CENTER)
+        cap.set_margin_bottom(6)
+        self.scan_root = Gtk.Label(xalign=0.5)
+        self.scan_root.add_css_class("app-small")
+        self.scan_root.set_ellipsize(2)         # middle: keep the mountpoint and the tail
+        self.scan_root.set_max_width_chars(64)
+        self.scan_activity = Gtk.Label(xalign=0.5)
+        self.scan_activity.add_css_class("app-small")
+        self.scan_activity.add_css_class("app-dim")
+        self.scan_activity.add_css_class("app-mono")
+        self.scan_activity.set_ellipsize(2)
+        self.scan_activity.set_max_width_chars(68)
+        cap.append(self.scan_root)
+        cap.append(self.scan_activity)
+        self.scan_caption = cap
+        cap.set_visible(False)
+        self.add(cap)
+
         self.summary = Gtk.Label(label="", xalign=0.0)
         self.summary.add_css_class("app-dim")
         self.add(self.summary)
@@ -60,6 +80,7 @@ class ResultsPage(BasePage):
 
         c = self.window.controller
         c.connect("scan-started", self._on_started)
+        c.connect("progress", self._on_progress)
         c.connect("group-found", self._on_group)
         c.connect("scan-finished", self._on_finished)
 
@@ -74,7 +95,18 @@ class ResultsPage(BasePage):
         self.summary.set_text("")               # the radar shows scanning; no text needed
         self.action_bar.set_visible(False)
         self._scan_start = time.monotonic()
+        self.scan_root.set_text(_("Scanning {p}").format(p=_root))
+        self.scan_activity.set_text("")
+        self.scan_caption.set_visible(True)
         self.spinner.start()
+
+    def _on_progress(self, _c, _fraction: float, phase: str, detail: str) -> None:
+        if detail:                              # a path (walk/hash/image) or a short phase note
+            self.scan_activity.set_text(detail)
+
+    def _end_spin(self) -> None:
+        self.spinner.stop()
+        self.scan_caption.set_visible(False)
 
     def _on_group(self, _c, group: DuplicateGroup) -> None:
         record = {"group": group, "keeper": group.keeper, "checks": []}
@@ -88,9 +120,9 @@ class ResultsPage(BasePage):
         elapsed = time.monotonic() - getattr(self, "_scan_start", 0.0)
         remaining = self.MIN_SPIN - elapsed
         if remaining > 0:
-            GLib.timeout_add(int(remaining * 1000), lambda: (self.spinner.stop(), False)[1])
+            GLib.timeout_add(int(remaining * 1000), lambda: (self._end_spin(), False)[1])
         else:
-            self.spinner.stop()
+            self._end_spin()
         if not self._groups:
             self.summary.set_text(_("No duplicates found."))
             return
