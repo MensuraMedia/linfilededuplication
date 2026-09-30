@@ -86,18 +86,9 @@ class Sidebar(Gtk.Box):
                 self.rows[spec.id] = row
                 blist.append(row)
             blist.connect("row-selected", self._on_selected)
+            blist.set_margin_bottom(14)         # sits at the bottom-left (no status footer)
             self.append(blist)
             self._blist = blist
-
-        self.footer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        self.footer.add_css_class("app-footer")
-        heading = Gtk.Label(label=_("STATUS"), xalign=0.0)
-        heading.add_css_class("app-sidebar-heading")
-        self.status = Gtk.Label(label=_("Idle"), xalign=0.0)
-        self.status.add_css_class("app-dim")
-        self.footer.append(heading)
-        self.footer.append(self.status)
-        self.append(self.footer)
 
     def select(self, page_id: str) -> None:
         row = self.rows.get(page_id)
@@ -120,7 +111,6 @@ class Sidebar(Gtk.Box):
                 row.dot.add_css_class("running")
             else:
                 row.dot.remove_css_class("running")
-        self.status.set_text(_("Scanning…") if running else _("Idle"))
 
     def _on_selected(self, listbox: Gtk.ListBox, row: NavRow | None) -> None:
         if row is None:

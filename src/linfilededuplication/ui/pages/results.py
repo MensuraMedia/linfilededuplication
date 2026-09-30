@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, Gdk, GLib, Gtk
 
 from linfilededuplication.core.model import KIND_IMAGE, KIND_SIMILAR, DuplicateGroup, FileEntry
 from linfilededuplication.core.units import human_bytes
@@ -125,8 +125,7 @@ class ResultsPage(BasePage):
         meta.add_css_class("app-dim")
         meta.add_css_class("app-small")
         spot = Gtk.Button(label=_("SpotCheck"))
-        spot.add_css_class("flat")
-        spot.set_valign(Gtk.Align.CENTER)
+        spot.set_valign(Gtk.Align.CENTER)      # a normal raised button, not flat text
         spot.connect("clicked", lambda _b, g=group: self.window.open_spotcheck(g, self._on_spotcheck_applied))
         header.append(meta)
         header.append(spot)
@@ -136,8 +135,11 @@ class ResultsPage(BasePage):
         name_sg = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         size_sg = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         sel_sg = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
+        record["rows"] = {}
         for f in group.files:
-            card.append(self._file_row(f, group, record, name_sg, size_sg, sel_sg))
+            row = self._file_row(f, group, record, name_sg, size_sg, sel_sg)
+            record["rows"][id(f)] = row
+            card.append(row)
         return card
 
     def _file_row(self, f: FileEntry, group: DuplicateGroup, record: dict,
@@ -173,7 +175,10 @@ class ResultsPage(BasePage):
         path.add_css_class("app-dim")
         path.add_css_class("app-small")
         path.set_ellipsize(3)
-        path.set_tooltip_text(f.path)
+        path.set_tooltip_text(_("{p}\nRight-click for options").format(p=f.path))
+        gesture = Gtk.GestureClick(button=3)     # right-click -> Explore here / Copy / Open
+        gesture.connect("pressed", lambda _g, _n, x, y, ff=f, w=path: self._show_path_menu(w, ff, x, y))
+        path.add_controller(gesture)
         row.append(path)
 
         # column 4: "Keep" + green circle, or "Delete" + red check.
@@ -216,6 +221,39 @@ class ResultsPage(BasePage):
         img = icon("app-stat-items-symbolic", 20)
         img.add_css_class("app-dim")
         return img
+
+    # --- path context menu ----------------------------------------------
+    def _show_path_menu(self, anchor, f: FileEntry, x: float, y: float) -> None:
+        pop = Gtk.Popover()
+        pop.set_parent(anchor)
+        pop.set_pointing_to(Gdk.Rectangle(int(x), int(y), 1, 1))
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        box.set_margin_top(4)
+        box.set_margin_bottom(4)
+        box.set_margin_start(4)
+        box.set_margin_end(4)
+
+        def item(label: str, cb) -> None:
+            lbl = Gtk.Label(label=label, xalign=0.0)
+            b = Gtk.Button()
+            b.set_child(lbl)
+            b.add_css_class("flat")
+            b.set_hexpand(True)
+            b.connect("clicked", lambda _b: (pop.popdown(), cb()))
+            box.append(b)
+
+        item(_("Explore here"), lambda: actions.show_in_file_manager(f.path))
+        item(_("Open file"), lambda: actions.open_file(f.path))
+        item(_("Copy path"), lambda: self._copy_path(f.path))
+        pop.set_child(box)
+        pop.popup()
+
+    def _copy_path(self, path: str) -> None:
+        try:
+            self.get_clipboard().set(path)
+            self.window.toast(_("Path copied"))
+        except Exception:
+            pass
 
     # --- selection + actions --------------------------------------------
     def _selected(self) -> list[tuple[dict, FileEntry]]:
@@ -293,11 +331,29 @@ class ResultsPage(BasePage):
         self._remove_by_ids({id(f) for f in files})
 
     def _remove_by_ids(self, removed) -> None:
-        """Drop the acted-on files so they cannot be selected again, and grey their checkbox."""
-        for rec in self._groups:
-            for check, f in rec["checks"]:
-                if id(f) in removed:
-                    check.set_active(False)
-                    check.set_sensitive(False)
+        """Remove the acted-on rows; when a group has no candidates left, drop the whole card."""
+        for rec in list(self._groups):
+            rows = rec.get("rows", {})
+            for fid in list(rows.keys()):
+                if fid in removed:
+                    row = rows.pop(fid)
+                    if row.get_parent() is rec["widget"]:
+                        rec["widget"].remove(row)
             rec["checks"] = [(c, f) for (c, f) in rec["checks"] if id(f) not in removed]
+            if not rec["checks"]:            # every candidate handled -> group resolved
+                if rec["widget"].get_parent() is self.groups_box:
+                    self.groups_box.remove(rec["widget"])
+                self._groups.remove(rec)
         self._refresh_selection()
+        self._update_summary()
+
+    def _update_summary(self) -> None:
+        n = len(self._groups)
+        reclaim = sum(f.size for rec in self._groups for (_c, f) in rec["checks"])
+        self.window.sidebar.set_count("results", n)
+        if n == 0:
+            self.summary.set_text(_("All groups resolved."))
+            self.action_bar.set_visible(False)
+        else:
+            self.summary.set_text(
+                _("{g} groups · up to {b} reclaimable").format(g=n, b=human_bytes(reclaim)))

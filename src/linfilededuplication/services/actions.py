@@ -11,11 +11,48 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from gi.repository import Gio
+from gi.repository import Gio, GLib
 
 from linfilededuplication.core.model import FileEntry
 
 log = logging.getLogger("linfilededuplication.actions")
+
+
+def show_in_file_manager(path: str) -> bool:
+    """Open the default file manager at the file's folder with the file highlighted.
+
+    Uses the freedesktop FileManager1 D-Bus interface (Nemo, Nautilus, Dolphin, ...),
+    falling back to opening the parent folder.
+    """
+    gfile = Gio.File.new_for_path(path)
+    uri = gfile.get_uri()
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus.call_sync(
+            "org.freedesktop.FileManager1", "/org/freedesktop/FileManager1",
+            "org.freedesktop.FileManager1", "ShowItems",
+            GLib.Variant("(ass)", ([uri], "")), None, Gio.DBusCallFlags.NONE, 3000, None)
+        log.info("show_in_file_manager: highlighted %s", path)
+        return True
+    except Exception as exc:
+        log.warning("ShowItems failed (%s); opening parent folder", exc)
+        try:
+            parent = gfile.get_parent()
+            if parent is not None:
+                Gio.AppInfo.launch_default_for_uri(parent.get_uri(), None)
+                return True
+        except Exception as exc2:
+            log.warning("open parent folder failed: %s", exc2)
+    return False
+
+
+def open_file(path: str) -> bool:
+    try:
+        Gio.AppInfo.launch_default_for_uri(Gio.File.new_for_path(path).get_uri(), None)
+        return True
+    except Exception as exc:
+        log.warning("open_file failed: %s", exc)
+        return False
 
 _PROTECTED = (
     str(Path.home()),                       # $HOME root itself (not its children)

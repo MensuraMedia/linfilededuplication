@@ -54,7 +54,7 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None) -> list[FileE
                             ext = os.path.splitext(name)[1].lower()
                             out.append(FileEntry(
                                 path=de.path, size=st.st_size, mtime=st.st_mtime,
-                                is_image=ext in _IMAGE_EXT))
+                                is_image=ext in _IMAGE_EXT, dev=st.st_dev, ino=st.st_ino))
                     except OSError:
                         continue
         except OSError:
@@ -101,7 +101,15 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
                     continue
                 if opts.verify_bytes and not hashers.bytes_equal([m.path for m in members]):
                     continue
-                grp = DuplicateGroup(kind=KIND_EXACT, key=digest, files=list(members))
+                # Collapse files already hard-linked together (same inode): they are one
+                # physical file, so there is nothing to reclaim and they must not reappear.
+                by_inode: dict[tuple[int, int], FileEntry] = {}
+                for m in members:
+                    by_inode.setdefault((m.dev, m.ino), m)
+                distinct = list(by_inode.values())
+                if len(distinct) < 2:
+                    continue
+                grp = DuplicateGroup(kind=KIND_EXACT, key=digest, files=distinct)
                 if opts.detect_backups:
                     backup_detect.analyze_group(grp)
                 policy.rank(grp, keep_newest=opts.keep_newest_backup)

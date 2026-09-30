@@ -23,6 +23,8 @@ class FileEntry:
     backup_confidence: float = 0.0
     effective_date: float = 0.0  # embedded date in name, else mtime
     is_newest: bool = False     # the most recent file in a backup group
+    dev: int = 0                # filesystem id
+    ino: int = 0                # inode; files sharing (dev, ino) are already hard-linked
 
     @property
     def name(self) -> str:

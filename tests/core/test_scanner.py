@@ -45,6 +45,17 @@ def test_finds_exact_duplicate_group(tmp_path):
     assert finished.groups == 1
 
 
+def test_hardlinked_files_not_reported(tmp_path):
+    import os
+    data = b"already linked content" * 2000
+    a = tmp_path / "a.dat"
+    a.write_bytes(data)
+    os.link(str(a), str(tmp_path / "b.dat"))     # hard link -> same inode
+    opts = ScanOptions(root=str(tmp_path), find_images=False, min_size=1)
+    groups = [e.group for e in _collect(opts) if isinstance(e, events.GroupFound)]
+    assert not groups                            # one physical file -> nothing to reclaim
+
+
 def test_no_duplicates(tmp_path):
     (tmp_path / "a").write_bytes(b"a" * 3000)
     (tmp_path / "b").write_bytes(b"b" * 3000)
