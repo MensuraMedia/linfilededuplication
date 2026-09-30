@@ -107,25 +107,26 @@ def _archive_snippet(path: str) -> Preview:
 
 
 def _pdf_snippet(path: str) -> Preview:
-    # Prefer poppler's pdftotext (argv, first page). Never a shell.
+    # poppler's pdftotext, first several pages so there's a real sample (argv only, no shell).
     try:
-        out = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-q", path, "-"],
-                             capture_output=True, timeout=8, text=True)
+        out = subprocess.run(["pdftotext", "-f", "1", "-l", "8", "-q", path, "-"],
+                             capture_output=True, timeout=12, text=True)
         text = (out.stdout or "").strip()
         if text:
-            return Preview(KIND_TEXT, os.path.basename(path), text=text[:6000], note="page 1")
+            return Preview(KIND_TEXT, os.path.basename(path), text=text[:8000], note="first pages")
     except (OSError, subprocess.SubprocessError):
         pass
     try:                                             # optional pure-python fallback
         import pypdf
         reader = pypdf.PdfReader(path)
-        text = (reader.pages[0].extract_text() or "").strip() if reader.pages else ""
+        pages = reader.pages[:8]
+        text = "\n".join((p.extract_text() or "") for p in pages).strip()
         note = f"{len(reader.pages)} pages"
         if text:
-            return Preview(KIND_TEXT, os.path.basename(path), text=text[:6000], note=note)
-        return _meta(path, note)
+            return Preview(KIND_TEXT, os.path.basename(path), text=text[:8000], note=note)
+        return _meta(path, note + " — no extractable text (likely scanned images)")
     except Exception:
-        return _meta(path, "PDF (install poppler-utils to preview text)")
+        return _meta(path, "PDF — install poppler-utils (pdftotext) to preview text")
 
 
 def preview(path: str) -> Preview:

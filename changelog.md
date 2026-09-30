@@ -31,3 +31,4 @@ Append-only. Format: `| ISO-8601 datetime | description |`.
 | 2026-09-30 | Fix hard-link/trash not removing files: acted rows are now removed and a resolved group collapses (was only greying the checkbox); scanner collapses already-hard-linked files (same dev+inode) so they no longer reappear each scan. |
 | 2026-09-30 | Results: right-click a file path for Explore here (FileManager1 ShowItems, highlights the file) / Open file / Copy path; SpotCheck is now a raised button. |
 | 2026-09-30 | Sidebar: removed the STATUS/Idle footer; the Settings button now sits at the bottom-left. |
+| 2026-09-30 | SpotCheck PDF preview now extracts the first 8 pages (was page 1) so sparse-per-page documents (e.g. flashcards) show a real sample; clearer note when a PDF is scanned images. |
