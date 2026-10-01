@@ -202,7 +202,9 @@ ellipsizes with a tooltip.
 ### 6.6 Removal flow
 Selected rows are removed from the UI as they're acted on; a fully-resolved group's card
 collapses and the sidebar count and summary update. Every destructive action still routes through
-an `Adw.AlertDialog` confirmation.
+an `Adw.AlertDialog` confirmation. The **Trash confirmation** lists the affected files in a
+scrollable, wide (560px) bordered box with non-wrapping monospace paths (`_file_list_widget`), so
+long names stay on one line (horizontal scroll) instead of wrapping.
 
 ---
 
@@ -260,11 +262,21 @@ the UI decides how to render, keeping `core/` GTK-free.
 
 ## 10. Live scan feedback
 
-- **Radar sweep** (`ui/widgets/scan_spinner.py`) — a Cairo, accent-coloured, theme-aware rotating
-  sweep shown below the Results title while scanning (kept visible ≥ 1.6 s even on fast scans).
-- **Scan caption** — centered under the radar: a stable **Scanning `<root>`** line plus a live
-  line streaming the current folder/file (middle-ellipsized, throttled ~15/sec), so a long
-  comprehensive scan visibly progresses.
+- **Percentage ring loader** (`ui/widgets/ring_loader.py`) — a Cairo circular loader (dark track,
+  red→orange gradient arc, centred **"NN %"**) shown below the Results title while scanning. The
+  percentage is the **true overall ratio of files scanned**, not a cosmetic animation: the scanner
+  reports progress over *all* files — a file with a unique size needs no hashing and counts as done
+  immediately, each hashed candidate and each perceptually-hashed image advances the count, and
+  total work = total files + the image pass. The value eases between updates and is monotonic
+  (never exceeds 100%). Because the walk discovers files (total unknown until it finishes), the
+  walk phase shows a small indeterminate creep (≤ 8%) until real per-file work begins.
+- **Reveal on completion** — groups found during the scan are **buffered**, not shown live. When the
+  scan finishes the ring fills to **100%**, holds, and **fades out**, and only then are the result
+  cards, savings panel, formula card and action bar built and revealed
+  (`RingLoader.complete` → `ResultsPage._present_results`). A cancelled scan hides the loader and
+  presents whatever was found.
+- **Scan caption** — centered under the loader: a stable **Scanning `<root>`** line plus a live
+  line streaming the current folder/file (middle-ellipsized, throttled ~15/sec).
 
 ---
 

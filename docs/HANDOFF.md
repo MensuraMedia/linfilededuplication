@@ -79,7 +79,7 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
 | Scan page (tiers, options, **file-type filter + All Files**) | `ui/pages/scan.py` |
 | Results (chart, formula card, action bar, rows, Delete All, Ignore) | `ui/pages/results.py` |
 | SpotCheck (image/pdf/video players) | `ui/pages/spotcheck.py` |
-| Space-savings bars / radar / info hint | `ui/widgets/space_chart.py`, `ui/widgets/scan_spinner.py`, `ui/widgets/info_hint.py` |
+| Space-savings bars / percentage ring / info hint | `ui/widgets/space_chart.py`, `ui/widgets/ring_loader.py`, `ui/widgets/info_hint.py` |
 | Theme palette | `ui/theme_loader.py` · styles `data/css/app.css` |
 | Settings (tolerant JSON) | `config/settings.py` |
 | Glossary data | `data/glossary/en.json` |
@@ -108,6 +108,15 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
   (grey out + skip in future scans via `ScanOptions.ignore_paths` / `settings.ignored_paths`).
 - Action bar **moved above the findings**; **Move to Trash → Delete All Duplicates** (no truncation).
 - **Thorough hard-link tests** (`tests/services/test_actions.py`).
+- Scan page: **Start scan** moved to the tier-toggle row (right-aligned, standard rounded button);
+  removed the Scan-page "Ignored items" section; **Ignore Folder** is now a per-group button on
+  **Results**; added a custom **Enter Extension** field (additive to the selected types).
+- SpotCheck **video**: poster thumbnail (ffmpegthumbnailer) + inline GtkVideo when
+  `libgtk-4-media-gstreamer` is installed, else a "Play in default player" button + install hint.
+- **Percentage ring loader** replaces the radar; the percentage is the real files-scanned ratio.
+- **Results reveal only after** the loader completes to 100% and fades (groups buffered during the
+  scan, built in `_present_results`).
+- Trash confirm dialog: **scrollable, wide, non-wrapping** file list.
 
 ---
 
