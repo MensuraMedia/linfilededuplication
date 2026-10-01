@@ -41,23 +41,47 @@ def phash(path: str):
         return None
 
 
+def dhash(path: str):
+    """Difference hash (64-bit) or None. Captures edge/gradient structure."""
+    try:
+        with Image.open(path) as im:
+            return imagehash.dhash(im)
+    except Exception:
+        return None
+
+
+def _fingerprint(path: str):
+    """Open once; return (phash, dhash, (w, h)) so near-dup matching needs two agreeing
+    hashes. pHash alone collides on smooth, low-detail photos (e.g. a plain wall vs a
+    ceiling); requiring dHash to agree as well rejects those without losing true dups,
+    which match on both."""
+    try:
+        with Image.open(path) as im:
+            size = im.size
+            return imagehash.phash(im), imagehash.dhash(im), size
+    except Exception:
+        return None, None, (0, 0)
+
+
 def find_similar_groups(images: list[FileEntry], max_distance: int, emit: Emit,
                         cancel: threading.Event | None = None) -> list[DuplicateGroup]:
     """Cluster images whose perceptual hashes are within ``max_distance`` bits.
 
-    Union-find over pairwise Hamming distance. Bucketed by a hash prefix first to keep
-    the comparison count down on large sets.
+    Two images are joined only when BOTH their pHash and dHash are within ``max_distance``
+    (dual-hash agreement), which filters out the smooth-image false positives that pHash
+    produces on its own. Union-find over the pairwise check; bucketed by a pHash prefix
+    first to keep the comparison count down on large sets.
     """
     if not HAVE_IMAGEHASH:
         return []
-    hashed: list[tuple[FileEntry, object]] = []
+    hashed: list[tuple[FileEntry, object, object]] = []
     for i, e in enumerate(images):
         if cancel is not None and cancel.is_set():
             break
-        h = phash(e.path)
-        if h is not None:
-            e.width, e.height = read_dimensions(e.path)
-            hashed.append((e, h))
+        ph, dh, size = _fingerprint(e.path)
+        if ph is not None and dh is not None:
+            e.width, e.height = size
+            hashed.append((e, ph, dh))
         if i % 16 == 0:
             emit(events.Progress(i, len(images), "image", e.path))
 
@@ -72,20 +96,20 @@ def find_similar_groups(images: list[FileEntry], max_distance: int, emit: Emit,
     def union(a: int, b: int) -> None:
         parent[find(a)] = find(b)
 
-    # Bucket by the top 16 bits of the hash so only plausibly-close images are compared.
+    # Bucket by the top 16 bits of the pHash so only plausibly-close images are compared.
     buckets: dict[str, list[int]] = defaultdict(list)
-    for idx, (_e, h) in enumerate(hashed):
-        buckets[str(h)[:4]].append(idx)
-    seen: set[int] = set()
+    for idx, (_e, ph, _dh) in enumerate(hashed):
+        buckets[str(ph)[:4]].append(idx)
     index_lists = list(buckets.values())
-    # Also compare across adjacent buckets by falling back to an all-pairs pass when small.
+    # Small sets: all-pairs so a prefix split can't separate a true match; large sets: buckets.
     pairs_source = [range(len(hashed))] if len(hashed) <= 400 else index_lists
     for group_idx in pairs_source:
         idxs = list(group_idx)
         for a in range(len(idxs)):
             for b in range(a + 1, len(idxs)):
                 ia, ib = idxs[a], idxs[b]
-                if (hashed[ia][1] - hashed[ib][1]) <= max_distance:
+                if (hashed[ia][1] - hashed[ib][1]) <= max_distance and \
+                        (hashed[ia][2] - hashed[ib][2]) <= max_distance:
                     union(ia, ib)
 
     clusters: dict[int, list[int]] = defaultdict(list)
