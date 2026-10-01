@@ -265,6 +265,13 @@ class ResultsPage(BasePage):
         record["ignore"] = ignore
         ihint = InfoHint(self.window, "ignore-files")
         ihint.set_valign(Gtk.Align.CENTER)
+        ignore_folder = Gtk.Button(label=_("Ignore Folder"))
+        ignore_folder.set_valign(Gtk.Align.CENTER)
+        ignore_folder.add_css_class("app-ignore")
+        ignore_folder.set_tooltip_text(_("Skip the folders these files live in, in future scans"))
+        ignore_folder.connect("clicked", lambda _b, g=group: self._ignore_group_folders(g))
+        fhint = InfoHint(self.window, "ignore-folder")
+        fhint.set_valign(Gtk.Align.CENTER)
         spot = Gtk.Button(label=_("SpotCheck"))
         spot.set_valign(Gtk.Align.CENTER)      # a normal raised button, not flat text
         spot.connect("clicked", lambda _b, g=group: self.window.open_spotcheck(g, self._on_spotcheck_applied))
@@ -272,6 +279,8 @@ class ResultsPage(BasePage):
         header.append(del_all)
         header.append(ignore)
         header.append(ihint)
+        header.append(ignore_folder)
+        header.append(fhint)
         header.append(spot)
         card.append(header)
 
@@ -476,6 +485,19 @@ class ResultsPage(BasePage):
                     and id(keeper) not in ig):
                 out.append((rec, keeper))             # delete-all also removes the keeper
         return out
+
+    def _ignore_group_folders(self, group: DuplicateGroup) -> None:
+        """Ignore the folders this group's files live in: persist them and grey the matching rows
+        everywhere in the current results."""
+        folders = sorted({f.parent for f in group.files})
+        s = self.app.settings
+        cur = set(getattr(s, "ignored_folders", []))
+        cur.update(folders)
+        s.ignored_folders = sorted(cur)
+        s.save()
+        self.apply_ignored_folders(folders)
+        self.window.toast(_("Ignoring {n} folder(s) — skipped in future scans").format(
+            n=len(folders)))
 
     def apply_ignored_folders(self, folders: list[str]) -> None:
         """Grey out (and drop from the selection) any current result rows whose file lives under

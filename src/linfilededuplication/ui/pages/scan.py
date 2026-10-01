@@ -21,7 +21,8 @@ class ScanPage(BasePage):
 
         self.add_heading(_("Scan"), _("Read-only — nothing is changed until you confirm."))
 
-        # tier toggle
+        # tier toggle + Start scan on one line (Start scan right-aligned)
+        toprow = Gtk.Box(spacing=12)
         toggle_box = Gtk.Box(spacing=0)
         toggle_box.add_css_class("linked")
         self.btn_simple = Gtk.ToggleButton(label=_("Simple Scan"))
@@ -32,7 +33,16 @@ class ScanPage(BasePage):
         self.btn_adv.connect("toggled", self._on_tier)
         toggle_box.append(self.btn_simple)
         toggle_box.append(self.btn_adv)
-        self.add(toggle_box)
+        toprow.append(toggle_box)
+        toprow.append(Gtk.Box(hexpand=True))        # spacer pushes Start scan to the right
+        self.run_btn = Gtk.Button(label=_("Start scan"))
+        self.run_btn.add_css_class("suggested-action")
+        self.run_btn.add_css_class("pill")
+        self.run_btn.set_halign(Gtk.Align.END)
+        self.run_btn.set_valign(Gtk.Align.CENTER)
+        self.run_btn.connect("clicked", self._on_run_clicked)
+        toprow.append(self.run_btn)
+        self.add(toprow)
 
         # folder + options
         grp = Adw.PreferencesGroup()
@@ -64,17 +74,7 @@ class ScanPage(BasePage):
         # file-type filter (columns of popular types, each with an "All")
         self.add(self._filetypes_section(list(getattr(s, "file_types", []))))
 
-        # ignore controls
-        self.add(self._ignore_section())
-
-        # run + progress
-        self.run_btn = Gtk.Button(label=_("Start scan"))
-        self.run_btn.add_css_class("suggested-action")
-        self.run_btn.add_css_class("pill")
-        self.run_btn.set_halign(Gtk.Align.START)
-        self.run_btn.connect("clicked", self._on_run_clicked)
-        self.add(self.run_btn)
-
+        # progress (the Start scan button is on the top row with the tier toggle)
         self.progress = Gtk.ProgressBar()
         self.progress.add_css_class("app-progress")
         self.progress.set_visible(False)
@@ -89,57 +89,6 @@ class ScanPage(BasePage):
         c.connect("progress", self._on_progress)
         c.connect("scan-finished", self._on_finished)
         c.connect("scan-error", self._on_error)
-
-    # --- ignore controls -------------------------------------------------
-    def _ignore_section(self) -> Gtk.Widget:
-        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        card.add_css_class("app-card")
-        card.add_css_class("app-savings")
-        title = Gtk.Label(label=_("Ignored items"), xalign=0.0)
-        title.add_css_class("app-group-title")
-        hint = Gtk.Label(xalign=0.0, wrap=True, label=_(
-            "Skip whole folders from scanning. Manage every ignored folder and file on the "
-            "Ignored page."))
-        hint.add_css_class("app-dim")
-        hint.add_css_class("app-small")
-        card.append(title)
-        card.append(hint)
-        row = Gtk.Box(spacing=8)
-        folder_btn = Gtk.Button(label=_("Ignore Folder"))
-        folder_btn.connect("clicked", self._ignore_folder)
-        row.append(folder_btn)
-        row.append(InfoHint(self.window, "ignore-folder"))
-        spacer = Gtk.Box(hexpand=True)
-        row.append(spacer)
-        manage = Gtk.Button(label=_("Open Ignored page"))
-        manage.add_css_class("flat")
-        manage.connect("clicked", lambda _b: self.window.show_page("ignored"))
-        row.append(manage)
-        card.append(row)
-        return card
-
-    def _ignore_folder(self, _btn) -> None:
-        dialog = Gtk.FileDialog(title=_("Choose a folder to ignore"))
-        dialog.select_folder(self.window, None, self._ignore_folder_chosen)
-
-    def _ignore_folder_chosen(self, dialog, result) -> None:
-        try:
-            folder = dialog.select_folder_finish(result)
-        except Exception:
-            return
-        if folder is None:
-            return
-        path = folder.get_path()
-        s = self.app.settings
-        cur = set(getattr(s, "ignored_folders", []))
-        cur.add(path)
-        s.ignored_folders = sorted(cur)
-        s.save()
-        # grey out any current result rows that live under this folder
-        results = self.window.pages.get("results")
-        if results is not None:
-            results.apply_ignored_folders([path])
-        self.window.toast(_("Ignoring folder — {p}").format(p=path))
 
     # --- file-type filter ------------------------------------------------
     def _filetypes_section(self, saved: list[str]) -> Gtk.Widget:

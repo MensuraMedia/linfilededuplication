@@ -49,8 +49,8 @@ Architecture: all
 Maintainer: MensuraMedia <artisanstock@gmail.com>
 Installed-Size: $INSTALLED_SIZE
 Depends: python3 (>= 3.11), python3-gi, python3-gi-cairo, gir1.2-gtk-4.0, gir1.2-adw-1
-Recommends: python3-pil, python3-imagehash, python3-xxhash, fonts-cantarell, hicolor-icon-theme, gir1.2-xapp-1.0
-Suggests: python3-tlsh, poppler-utils
+Recommends: python3-pil, python3-imagehash, python3-xxhash, fonts-cantarell, hicolor-icon-theme, gir1.2-xapp-1.0, poppler-utils, libgtk-4-media-gstreamer, ffmpegthumbnailer
+Suggests: python3-tlsh, gstreamer1.0-libav
 Homepage: https://github.com/MensuraMedia/linfilededuplication
 Description: Find and safely remove duplicate and near-duplicate files
  DedupeDash is a GTK 4 dashboard that finds exact duplicate files and visually

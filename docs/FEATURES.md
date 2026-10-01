@@ -143,10 +143,10 @@ Two skip lists, applied by `walk()` in **all future scans**:
 
 Both are managed on the **Ignored page** (§13), where any entry can be resumed.
 
-### 5.6 Ignore Folder (Scan page)
-An **Ignored items** card with an **Ignore Folder** button (folder chooser → adds to
-`settings.ignored_folders`), an InfoHint (*"Ignored folders will prevent an entire folder and all
-its contents from being scanned…"*), and an **Open Ignored page** shortcut.
+### 5.6 Ignore Folder (Results group header — see §6.5)
+Per-group **Ignore Folder** button (+ InfoHint): ignores the folders the group's files live in,
+persists them to `settings.ignored_folders`, and greys the matching rows. Managed on the Ignored
+page (§13).
 
 ---
 
@@ -194,6 +194,9 @@ ellipsizes with a tooltip.
 - **Folder ignore reflection** — when a folder is ignored (Scan page), `apply_ignored_folders()`
   greys out and de-selects every current result row whose file lives under that folder, across
   all groups (per-row `ignored_files`).
+- **Ignore Folder** (+ InfoHint) — ignores the folders this group's files live in (adds their
+  parents to `settings.ignored_folders`), greys every current row under those folders, and skips
+  them in future scans.
 - **SpotCheck** — opens the confirmation view (§6.6).
 
 ### 6.6 Removal flow
@@ -233,9 +236,11 @@ panel fills the modal and renders the file by kind:
   time with **Prev / Page N / M / Next** and an **Actual size** zoom. Paging is **synced across
   panels**, so page N sits beside page N for a true A/B compare. Falls back to extracted text when
   rendering is unavailable.
-- **Video** — an inline **GtkVideo** player (play/pause + scrub) for supported types
-  (`.mp4/.mov/.mkv/.webm/.avi/.wmv/.flv/.mpg/.3gp/.ogv`). Falls back to the metadata card when GTK
-  has no media backend (missing GStreamer codecs).
+- **Video** — a poster **thumbnail** (grabbed with `ffmpegthumbnailer`) that plays inline via
+  **GtkVideo** when GTK's media backend (`libgtk-4-media-gstreamer`) is installed. Without it,
+  SpotCheck still shows the thumbnail plus a **Play in default player** button and the one-line
+  install hint, so videos are always visible and playable. Supported:
+  `.mp4/.mov/.mkv/.webm/.avi/.wmv/.flv/.mpg/.3gp/.ogv`.
 - **Text / Office / Archive** — budgeted read-only snippets (`core/preview.py` providers never
   execute a file, follow a link out, or touch the network).
 

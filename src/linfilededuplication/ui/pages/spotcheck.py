@@ -139,16 +139,67 @@ class SpotCheckDialog(Adw.Dialog):
         return frame
 
     def _video_view(self, path: str) -> Gtk.Widget | None:
-        """Inline video player (GtkVideo) with built-in controls. Returns None when GTK has
-        no media backend, so the caller falls back to the metadata card."""
+        """Show a video thumbnail and play it. Uses GtkVideo (inline, with controls) when GTK's
+        media backend is installed; otherwise shows the poster frame with a Play-in-default-player
+        button and the one-line install hint, so videos are at least visible and playable."""
+        poster = self._video_thumbnail(path)
         try:
-            video = Gtk.Video.new_for_filename(path)
+            mf = Gtk.MediaFile.new_for_filename(path)
+            backend_ok = mf.__gtype__.name != "GtkNoMediaFile"
+        except Exception:
+            mf, backend_ok = None, False
+        if backend_ok and mf is not None:
+            video = Gtk.Video()
+            video.set_media_stream(mf)
             video.set_autoplay(False)
             video.set_hexpand(True)
             video.set_vexpand(True)
             return video
+        return self._video_fallback(path, poster)
+
+    def _video_thumbnail(self, path: str) -> str | None:
+        """Grab a poster frame (~10% in) with ffmpegthumbnailer, if available. Read-only."""
+        import os
+        import subprocess
+        import tempfile
+        outdir = tempfile.mkdtemp(prefix="lfd-vid-")
+        self._tmp_dirs.append(outdir)
+        out = os.path.join(outdir, "poster.png")
+        try:
+            subprocess.run(["ffmpegthumbnailer", "-i", path, "-o", out, "-s", "640", "-t", "10%"],
+                           capture_output=True, timeout=20)
+            if os.path.exists(out) and os.path.getsize(out) > 0:
+                return out
         except Exception:
-            return None
+            pass
+        return None
+
+    def _video_fallback(self, path: str, poster: str | None) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, hexpand=True, vexpand=True)
+        if poster:
+            pic = Gtk.Picture.new_for_filename(poster)
+            pic.set_content_fit(Gtk.ContentFit.CONTAIN)
+            pic.set_can_shrink(True)
+            pic.set_hexpand(True)
+            pic.set_vexpand(True)
+            pic.add_css_class("app-thumb")
+            box.append(pic)
+        else:
+            ph = Gtk.Label(label=_("Video"), vexpand=True)
+            ph.add_css_class("app-dim")
+            box.append(ph)
+        play = Gtk.Button(label=_("▶  Play in default player"))
+        play.set_halign(Gtk.Align.CENTER)
+        play.add_css_class("pill")
+        play.connect("clicked", lambda _b, p=path: actions.open_file(p))
+        box.append(play)
+        note = Gtk.Label(xalign=0.5, justify=Gtk.Justification.CENTER, wrap=True, label=_(
+            "Play videos inside SpotCheck by installing the GTK media backend:\n"
+            "sudo apt install libgtk-4-media-gstreamer"))
+        note.add_css_class("app-small")
+        note.add_css_class("app-dim")
+        box.append(note)
+        return box
 
     def _text_view(self, pv) -> Gtk.Widget:
         sw = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
