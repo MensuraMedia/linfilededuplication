@@ -45,23 +45,23 @@ class SpaceChart(Gtk.DrawingArea):
         accent = self._color("accent_bg_color", "accent_color", fallback=_ACCENT)
         success = self._color("success_color", "app-success", fallback=_SUCCESS)
         fg = self._color("window_fg_color", "theme_fg_color", fallback=(0.9, 0.9, 0.92))
-        track = self._color("headerbar_shade_color", fallback=_TRACK)
 
         if self._occupied <= 0:
             return
         after = self._occupied - self._freed
 
         pad = 8.0
-        label_w = 118.0                        # space for the row label on the left
-        value_w = 96.0                         # space for the byte value on the right
+        label_w = 118.0                        # row label on the left
+        value_w = 92.0                         # byte value on the right
         bar_x = pad + label_w
         bar_w = max(40.0, w - bar_x - value_w - pad)
-        bar_h = 26.0
-        gap = 26.0
-        top = 14.0
+        bar_h = 22.0
+        radius = 4.0                           # flatter corners read as a capacity meter
+        gap = 30.0
+        top = 16.0
 
         def rrect(x, y, width, height, r):
-            r = min(r, height / 2, width / 2)
+            r = min(r, height / 2, max(0.0, width) / 2)
             cr.new_sub_path()
             cr.arc(x + width - r, y + r, r, -1.5708, 0)
             cr.arc(x + width - r, y + height - r, r, 0, 1.5708)
@@ -69,7 +69,7 @@ class SpaceChart(Gtk.DrawingArea):
             cr.arc(x + r, y + r, r, 3.1416, 4.7124)
             cr.close_path()
 
-        def text(s, x, y, color, *, bold=False, size=10.5, align_right_to=None, dim=False):
+        def text(s, x, y, color, *, bold=False, size=10.5, align_right_to=None):
             layout = PangoCairo.create_layout(cr)
             desc = Pango.FontDescription()
             desc.set_family("Sans")
@@ -81,32 +81,37 @@ class SpaceChart(Gtk.DrawingArea):
             ty = y - logical.height / 2
             tx = x if align_right_to is None else align_right_to - logical.width
             cr.save()
-            cr.set_source_rgba(color[0], color[1], color[2], 0.6 if dim else 1.0)
+            cr.set_source_rgb(*color)
             cr.move_to(tx, ty)
             PangoCairo.show_layout(cr, layout)
             cr.restore()
 
-        def bar_row(y, label, fill_frac, fill_rgb, value_str, *, freed_frac=0.0):
-            text(label, pad, y + bar_h / 2, fg)
-            # track
-            cr.set_source_rgba(track[0], track[1], track[2], 0.22)
-            rrect(bar_x, y, bar_w, bar_h, 6); cr.fill()
-            # filled portion (kept / now)
-            fw = max(0.0, bar_w * fill_frac)
+        def meter(y, label, frac, fill_rgb, value_str):
+            text(label, pad, y + bar_h / 2, (fg[0] * 0.78, fg[1] * 0.78, fg[2] * 0.82))
+            # recessed track: dark well + subtle inset border
+            cr.set_source_rgb(0.082, 0.090, 0.106)
+            rrect(bar_x, y, bar_w, bar_h, radius); cr.fill()
+            # gridline ticks every 10% -> a capacity-meter look
+            cr.save()
+            rrect(bar_x, y, bar_w, bar_h, radius); cr.clip()
+            cr.set_line_width(1.0)
+            cr.set_source_rgba(1, 1, 1, 0.07)
+            for k in range(1, 10):
+                gx = bar_x + bar_w * k / 10.0
+                cr.move_to(gx, y + 1); cr.line_to(gx, y + bar_h - 1); cr.stroke()
+            # filled portion
+            fw = max(0.0, bar_w * max(0.0, min(1.0, frac)))
             if fw > 1:
-                cr.set_source_rgba(fill_rgb[0], fill_rgb[1], fill_rgb[2], 0.95)
-                rrect(bar_x, y, fw, bar_h, 6); cr.fill()
-            # freed portion (hatched-light accent) sitting after the kept portion
-            if freed_frac > 0:
-                fx = bar_x + bar_w * (fill_frac)
-                ww = bar_w * freed_frac
-                cr.set_source_rgba(accent[0], accent[1], accent[2], 0.28)
-                rrect(fx, y, ww, bar_h, 6); cr.fill()
+                cr.set_source_rgb(*fill_rgb)
+                rrect(bar_x, y, fw, bar_h, radius); cr.fill()
+                cr.set_source_rgba(1, 1, 1, 0.14)      # top sheen
+                rrect(bar_x, y, fw, bar_h * 0.5, radius); cr.fill()
+            cr.restore()
+            # inset border
+            cr.set_source_rgba(1, 1, 1, 0.14); cr.set_line_width(1.0)
+            rrect(bar_x + 0.5, y + 0.5, bar_w - 1, bar_h - 1, radius); cr.stroke()
             text(value_str, 0, y + bar_h / 2, fg, align_right_to=w - pad, bold=True)
 
         occ = float(self._occupied)
-        # Row 1 — Now: the full current footprint (scaled to the full bar).
-        bar_row(top, _("Now"), 1.0, accent, human_bytes(self._occupied))
-        # Row 2 — After cleanup: keepers remain (green); the freed slice is highlighted.
-        bar_row(top + bar_h + gap, _("After cleanup"), after / occ, success,
-                human_bytes(after), freed_frac=self._freed / occ)
+        meter(top, _("Now"), 1.0, accent, human_bytes(self._occupied))
+        meter(top + bar_h + gap, _("After cleanup"), after / occ, success, human_bytes(after))

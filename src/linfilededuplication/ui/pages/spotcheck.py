@@ -128,12 +128,27 @@ class SpotCheckDialog(Adw.Dialog):
             pic.set_hexpand(True)
             pic.set_vexpand(True)
             frame.set_child(pic)
+        elif pv.kind == previewmod.KIND_VIDEO and pv.image_path:
+            view = self._video_view(pv.image_path)
+            frame.set_child(view if view is not None else self._text_view(pv))
         elif pv.kind == previewmod.KIND_PDF and pv.image_path:
             view = self._pdf_view(pv.image_path)
             frame.set_child(view if view is not None else self._text_view(pv))
         else:
             frame.set_child(self._text_view(pv))
         return frame
+
+    def _video_view(self, path: str) -> Gtk.Widget | None:
+        """Inline video player (GtkVideo) with built-in controls. Returns None when GTK has
+        no media backend, so the caller falls back to the metadata card."""
+        try:
+            video = Gtk.Video.new_for_filename(path)
+            video.set_autoplay(False)
+            video.set_hexpand(True)
+            video.set_vexpand(True)
+            return video
+        except Exception:
+            return None
 
     def _text_view(self, pv) -> Gtk.Widget:
         sw = Gtk.ScrolledWindow(hexpand=True, vexpand=True)

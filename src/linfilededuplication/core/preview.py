@@ -18,11 +18,14 @@ KIND_IMAGE = "image"
 KIND_TEXT = "text"
 KIND_META = "meta"
 KIND_PDF = "pdf"        # render the actual pages (UI), with text as a fallback
+KIND_VIDEO = "video"    # inline player (UI); metadata card as a fallback
 
 MAX_BYTES = 64 * 1024
 MAX_LINES = 200
 
 _IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
+_VIDEO_EXT = {".mp4", ".m4v", ".mov", ".mkv", ".webm", ".avi", ".wmv", ".flv",
+              ".mpg", ".mpeg", ".3gp", ".ogv"}
 _TEXT_EXT = {".txt", ".md", ".rst", ".log", ".csv", ".tsv", ".json", ".yaml", ".yml", ".toml",
              ".ini", ".cfg", ".conf", ".xml", ".html", ".css", ".js", ".ts", ".py", ".c", ".h",
              ".cpp", ".rs", ".go", ".java", ".sh", ".rb", ".php", ".sql"}
@@ -136,6 +139,9 @@ def preview(path: str) -> Preview:
     try:
         if ext in _IMAGE_EXT:
             return Preview(KIND_IMAGE, os.path.basename(path), image_path=path)
+        if ext in _VIDEO_EXT:
+            return Preview(KIND_VIDEO, os.path.basename(path), image_path=path,
+                           note=ext.lstrip(".").upper() + " video")
         if ext == ".pdf":
             snip = _pdf_snippet(path)       # text fallback if page rendering is unavailable
             return Preview(KIND_PDF, os.path.basename(path), image_path=path,

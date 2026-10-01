@@ -65,6 +65,13 @@
 .app-savings { padding: 16px 18px; }
 .app-savings-head { font-size: 1.7rem; font-weight: 800; }
 .app-cat-all { font-weight: 700; }
+.app-rule-num { background-color: alpha(@accent_bg_color, 0.22); color: @accent_color;
+  border-radius: 11px; font-weight: 700; font-size: 0.82rem; }
+.app-delall { font-size: 0.86rem; }
+.app-delall:checked { background-color: @error_color; color: #ffffff; }
+.app-guard { margin: 10px 12px 2px; padding: 9px 12px; border-radius: 9px;
+  color: @error_color; background-color: alpha(@error_color, 0.12);
+  border: 1px solid alpha(@error_color, 0.4); }
 .app-pdf-nav { padding: 2px 4px; }
 .app-pdf-nav button.flat { min-height: 24px; padding: 2px 8px; }
 
@@ -73,8 +80,14 @@
 .app-info-hint:hover { opacity: 1; }
 
 /* results selection markers */
-.app-del-check check:checked { background-color: @error_color; border-color: @error_color; color: #ffffff; }
-.app-del-check check { border-color: @error_color; }
+/* Delete marker: a red check-circle (mirrors the green keep marker), never a system checkbox */
+.app-del-marker { min-width: 26px; min-height: 26px; padding: 0; border-radius: 50%;
+  background: none; border: none; box-shadow: none; -gtk-icon-size: 18px; }
+.app-del-marker:checked { background: none; box-shadow: none; }
+.app-del-marker:hover { background: alpha(@error_color, 0.14); }
+.app-del-marker:checked image { color: @error_color; }
+.app-del-marker:not(:checked) image { opacity: 0.32; }
+.app-del-static image, .app-del-static { color: @error_color; }
 .app-keep-check { color: @success_color; }
 .app-keep-text { color: @success_color; font-weight: 700; }
 .app-del-text { color: @error_color; font-weight: 700; }

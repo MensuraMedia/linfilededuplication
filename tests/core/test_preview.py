@@ -36,3 +36,15 @@ def test_binary_falls_back_to_meta(tmp_path):
     p.write_bytes(b"\x00\x01\x02\x03" * 50)
     pv = preview.preview(str(p))
     assert pv.kind == preview.KIND_META
+
+
+def test_video_is_classified_as_video():
+    from linfilededuplication.core import preview as pv
+    p = pv.preview("/does/not/exist/clip.mp4")
+    assert p.kind == pv.KIND_VIDEO
+    assert p.image_path.endswith("clip.mp4")
+
+
+def test_unknown_video_ext_not_video():
+    from linfilededuplication.core import preview as pv
+    assert pv.preview("/x/readme.txt").kind != pv.KIND_VIDEO

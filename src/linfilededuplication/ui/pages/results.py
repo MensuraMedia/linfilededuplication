@@ -71,6 +71,10 @@ class ResultsPage(BasePage):
         panel.set_visible(False)
         self.add(panel)
 
+        self.formula_card = self._build_formula_card()
+        self.formula_card.set_visible(False)
+        self.add(self.formula_card)
+
         self.summary = Gtk.Label(label="", xalign=0.0)
         self.summary.add_css_class("app-dim")
         self.add(self.summary)
@@ -116,6 +120,7 @@ class ResultsPage(BasePage):
         self.action_bar.set_visible(False)
         self._scan_start = time.monotonic()
         self.savings_panel.set_visible(False)
+        self.formula_card.set_visible(False)
         self.scan_root.set_text(_("Scanning {p}").format(p=_root))
         self.scan_activity.set_text("")
         self.scan_caption.set_visible(True)
@@ -160,7 +165,50 @@ class ResultsPage(BasePage):
         self._show_savings(fin)
         self.action_bar.set_visible(True)
 
+    def _build_formula_card(self) -> Gtk.Widget:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        card.add_css_class("app-card")
+        card.add_css_class("app-savings")
+        title = Gtk.Label(label=_("How LinFileDedup decides what to keep"), xalign=0.0)
+        title.add_css_class("app-group-title")
+        sub = Gtk.Label(xalign=0.0, wrap=True, label=_(
+            "One file in every group is always kept — only the extra copies are ever removed."))
+        sub.add_css_class("app-dim")
+        sub.add_css_class("app-small")
+        card.append(title)
+        card.append(sub)
+        g, r = "#2ec27e", "#e2564b"
+        rules = [
+            _("<b>Same size and type.</b> The <span foreground=\"{g}\">newest</span> copy is kept; "
+              "the <span foreground=\"{r}\">older</span> copies are marked for deletion."),
+            _("<b>Same type, different size.</b> The <span foreground=\"{g}\">largest</span> "
+              "(highest-quality) copy is kept; the <span foreground=\"{r}\">smaller</span> copies "
+              "are marked for deletion."),
+            _("<b>Backups detected.</b> The <span foreground=\"{g}\">newest</span> backup is kept; "
+              "<span foreground=\"{r}\">older</span> backups are marked for deletion."),
+            _("<b>Name tells.</b> An original is kept over a <span foreground=\"{r}\">“copy”, “(1)”, "
+              "or “resized”</span> version of the same content."),
+            _("<b>Already hard-linked.</b> Files that share one physical copy are "
+              "<span foreground=\"{g}\">left alone</span> — there is nothing to reclaim."),
+        ]
+        grid = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9)
+        grid.set_margin_top(6)
+        for i, rule in enumerate(rules, 1):
+            rowb = Gtk.Box(spacing=11)
+            num = Gtk.Label(label=str(i))
+            num.add_css_class("app-rule-num")
+            num.set_size_request(22, 22)
+            num.set_valign(Gtk.Align.START)
+            body = Gtk.Label(xalign=0.0, wrap=True, use_markup=True, hexpand=True,
+                             label=rule.format(g=g, r=r))
+            rowb.append(num)
+            rowb.append(body)
+            grid.append(rowb)
+        card.append(grid)
+        return card
+
     def _show_savings(self, fin) -> None:
+        self.formula_card.set_visible(fin.groups > 0 and not fin.cancelled)
         if fin.reclaimable <= 0 or fin.occupied_bytes <= 0:
             self.savings_panel.set_visible(False)
             return
@@ -202,11 +250,17 @@ class ResultsPage(BasePage):
             xalign=0.0, hexpand=True)           # takes the slack so SpotCheck sits at the right
         meta.add_css_class("app-dim")
         meta.add_css_class("app-small")
+        del_all = Gtk.ToggleButton(label=_("Delete all copies"))
+        del_all.set_valign(Gtk.Align.CENTER)
+        del_all.add_css_class("app-delall")
+        del_all.set_tooltip_text(_("Remove every copy in this group — keep none"))
+        del_all.connect("toggled", lambda b, rec=record: self._on_delete_all(rec, b))
+        record["delete_all"] = del_all
         spot = Gtk.Button(label=_("SpotCheck"))
         spot.set_valign(Gtk.Align.CENTER)      # a normal raised button, not flat text
-        spot.set_halign(Gtk.Align.END)
         spot.connect("clicked", lambda _b, g=group: self.window.open_spotcheck(g, self._on_spotcheck_applied))
         header.append(meta)
+        header.append(del_all)
         header.append(spot)
         card.append(header)
 
@@ -219,7 +273,39 @@ class ResultsPage(BasePage):
             row = self._file_row(f, group, record, name_sg, size_sg, sel_sg)
             record["rows"][id(f)] = row
             card.append(row)
+
+        guard = Gtk.Label(xalign=0.0, wrap=True, label=_(
+            "⚠  No copy will remain in this group. These files move to Trash (recoverable); "
+            "Hard-link is unavailable when nothing is kept."))
+        guard.add_css_class("app-guard")
+        guard.add_css_class("app-small")
+        guard.set_visible(False)
+        record["guard"] = guard
+        card.append(guard)
         return card
+
+    def _on_delete_all(self, record: dict, toggle: Gtk.ToggleButton) -> None:
+        on = toggle.get_active()
+        kr = record.get("keeper_row")
+        if kr:
+            kr["label"].set_text(_("Delete") if on else _("Keep"))
+            kr["label"].remove_css_class("app-keep-text" if on else "app-del-text")
+            kr["label"].add_css_class("app-del-text" if on else "app-keep-text")
+            if on:
+                kr["name"].add_css_class("app-del-name")
+                kr["marker"].remove_css_class("app-keep-check")
+                kr["marker"].add_css_class("app-del-static")
+            else:
+                kr["name"].remove_css_class("app-del-name")
+                kr["marker"].remove_css_class("app-del-static")
+                kr["marker"].add_css_class("app-keep-check")
+        if record.get("guard"):
+            record["guard"].set_visible(on)
+        if on:
+            toggle.add_css_class("destructive-action")
+        else:
+            toggle.remove_css_class("destructive-action")
+        self._refresh_selection()
 
     def _file_row(self, f: FileEntry, group: DuplicateGroup, record: dict,
                   name_sg: Gtk.SizeGroup, size_sg: Gtk.SizeGroup, sel_sg: Gtk.SizeGroup) -> Gtk.Box:
@@ -270,11 +356,16 @@ class ResultsPage(BasePage):
             marker = icon("app-status-success-symbolic", 18)
             marker.add_css_class("app-keep-check")
             marker.set_tooltip_text(_("Kept"))
+            # remember the keeper row so "Delete all copies" can flip it to red
+            record["keeper_row"] = {"label": lbl, "marker": marker, "name": name}
         else:
-            marker = Gtk.CheckButton()
-            marker.add_css_class("app-del-check")
+            # a red check-circle marker (not an orange system checkbox): active = will delete
+            marker = Gtk.ToggleButton()
+            marker.add_css_class("flat")
+            marker.add_css_class("app-del-marker")
+            marker.set_child(icon("app-status-success-symbolic", 18))
             marker.set_active(True)
-            marker.set_tooltip_text(_("Marked for removal"))
+            marker.set_tooltip_text(_("Marked for removal — click to keep this copy"))
             marker.connect("toggled", lambda _c: self._refresh_selection())
             record["checks"].append((marker, f))
         marker.set_size_request(26, 26)
@@ -346,6 +437,9 @@ class ResultsPage(BasePage):
             for check, f in rec["checks"]:
                 if check.get_active():
                     out.append((rec, f))
+            da = rec.get("delete_all")
+            if da is not None and da.get_active() and rec.get("keeper") is not None:
+                out.append((rec, rec["keeper"]))      # delete-all also removes the keeper
         return out
 
     def _refresh_selection(self) -> None:
@@ -362,11 +456,18 @@ class ResultsPage(BasePage):
         sel = self._selected()
         if not sel:
             return
-        keepers = {rec["keeper"].name for rec, _f in sel if rec["keeper"]}
+        nuke = sum(1 for rec, _f in sel
+                   if rec.get("delete_all") is not None and rec["delete_all"].get_active())
+        if nuke:                                       # some groups keep no copy at all
+            body = _("The selected files move to Trash and can be restored from your file "
+                     "manager.\n\n⚠ {n} group(s) are set to “Delete all copies” — every copy "
+                     "in those groups will be removed, leaving nothing behind.").format(n=nuke)
+        else:
+            keepers = {rec["keeper"].name for rec, _f in sel if rec["keeper"]}
+            body = _("The selected copies move to Trash and can be restored from your file "
+                     "manager. Kept originals: {k}.").format(k=", ".join(sorted(keepers))[:200])
         dialog = Adw.AlertDialog(
-            heading=_("Move {n} files to Trash?").format(n=len(sel)),
-            body=_("The selected copies move to Trash and can be restored from your file manager. "
-                   "Kept originals: {k}.").format(k=", ".join(sorted(keepers))[:200]))
+            heading=_("Move {n} files to Trash?").format(n=len(sel)), body=body)
         dialog.add_response("cancel", _("Cancel"))
         dialog.add_response("ok", _("Move to Trash"))
         dialog.set_response_appearance("ok", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -389,9 +490,14 @@ class ResultsPage(BasePage):
             return
         done = freed = 0
         errors: list[str] = []
+        skipped_delete_all = False
         by_group: dict[int, list[FileEntry]] = {}
         keepers: dict[int, FileEntry] = {}
         for rec, f in sel:
+            da = rec.get("delete_all")
+            if da is not None and da.get_active():
+                skipped_delete_all = True             # no keeper to link to — can't hard-link
+                continue
             gid = id(rec)
             by_group.setdefault(gid, []).append(f)
             keepers[gid] = rec["keeper"]
@@ -402,8 +508,13 @@ class ResultsPage(BasePage):
             done += res.done
             freed += res.freed
             errors += res.errors
-        self._apply_removed(sel)
+        # only remove the rows that were actually hard-linked
+        linked = {id(f) for gid, extras in by_group.items() if keepers[gid] is not None
+                  for f in extras}
+        self._remove_by_ids(linked)
         self.window.toast(_("Hard-linked {n} files · {b} reclaimed").format(n=done, b=human_bytes(freed)))
+        if skipped_delete_all:
+            self.window.toast(_("Groups set to “Delete all copies” were skipped — use Move to Trash."))
         for err in errors[:1]:
             self.window.toast(err)
 
