@@ -23,7 +23,8 @@ class ScanOptions:
     exclusions: list[str] = field(default_factory=list)   # exclusion preset keys
     exclude: list[str] = field(default_factory=list)      # custom glob patterns
     file_types: list[str] = field(default_factory=list)   # extensions to include; [] = all
-    ignore_paths: list[str] = field(default_factory=list)  # exact paths to skip (user "Ignore")
+    ignore_paths: list[str] = field(default_factory=list)  # exact files to skip (user "Ignore")
+    ignore_dirs: list[str] = field(default_factory=list)   # folders to skip entirely (+ contents)
     # Advanced-tier signals:
     advanced_similar: bool = False    # find near-identical content (chunking + fuzzy)
     similar_threshold: float = 0.55   # min chunk-overlap (0..1) for a similar group

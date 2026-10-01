@@ -59,3 +59,13 @@ def test_walk_skips_ignored_paths(tmp_path):
     opts = ScanOptions(root=str(tmp_path), min_size=1, ignore_paths=[str(skip)])
     names = {e.name for e in walk(opts)}
     assert names == {"keep.dat"}            # ignored file is not walked
+
+
+def test_walk_skips_ignored_folder_and_contents(tmp_path):
+    (tmp_path / "keep.dat").write_bytes(b"x" * 4000)
+    sub = tmp_path / "archive"; sub.mkdir()
+    (sub / "a.dat").write_bytes(b"y" * 4000)
+    (sub / "b.dat").write_bytes(b"z" * 4000)
+    opts = ScanOptions(root=str(tmp_path), min_size=1, ignore_dirs=[str(sub)])
+    names = {e.name for e in walk(opts)}
+    assert names == {"keep.dat"}            # the ignored folder and all its files are skipped

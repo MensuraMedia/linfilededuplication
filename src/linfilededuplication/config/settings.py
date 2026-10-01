@@ -34,7 +34,8 @@ class Settings:
     similar_threshold: float = 0.55
     exclusions: list[str] = field(default_factory=lambda: list(DEFAULT_ON))
     file_types: list[str] = field(default_factory=list)   # [] = all types
-    ignored_paths: list[str] = field(default_factory=list)  # files the user chose to ignore
+    ignored_paths: list[str] = field(default_factory=list)   # files the user chose to ignore
+    ignored_folders: list[str] = field(default_factory=list)  # folders the user chose to ignore
 
     @classmethod
     def load(cls) -> "Settings":

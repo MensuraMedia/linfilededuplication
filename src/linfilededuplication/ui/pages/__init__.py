@@ -36,6 +36,11 @@ def _history(window):
     return HistoryPage(window)
 
 
+def _ignored(window):
+    from linfilededuplication.ui.pages.ignored import IgnoredPage
+    return IgnoredPage(window)
+
+
 def _knowledge(window):
     from linfilededuplication.ui.pages.knowledge import KnowledgePage
     return KnowledgePage(window)
@@ -50,6 +55,7 @@ PAGES: list[PageSpec] = [
     PageSpec("overview", _("Overview"), "app-nav-home", _overview),
     PageSpec("scan", _("Scan"), "app-nav-scan", _scan),
     PageSpec("results", _("Results"), "app-nav-results", _results),
+    PageSpec("ignored", _("Ignored"), "app-nav-ignored", _ignored),
     PageSpec("history", _("History"), "app-nav-history", _history),
     PageSpec("knowledge", _("Knowledge"), "app-nav-knowledge", _knowledge),
     PageSpec("settings", _("Settings"), "app-nav-settings", _settings, bottom=True),

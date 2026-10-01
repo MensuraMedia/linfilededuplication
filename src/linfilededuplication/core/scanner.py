@@ -37,6 +37,7 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
     matcher = exclusions.compile(opts.exclusions, opts.exclude)
     type_filter = {e.lower() for e in opts.file_types}   # empty = keep all types
     ignored = set(opts.ignore_paths)                     # files the user chose to ignore
+    ignored_dirs = set(opts.ignore_dirs)                 # folders to skip entirely (+ contents)
     stack = [opts.root]
     last_tick = 0.0
 
@@ -53,6 +54,8 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
         if cancel is not None and cancel.is_set():
             break
         current = stack.pop()
+        if current in ignored_dirs:           # user ignored this whole folder — skip it + contents
+            continue
         tick(current)                        # folder being scanned
         try:
             with os.scandir(current) as it:

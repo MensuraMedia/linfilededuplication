@@ -140,7 +140,7 @@ class ResultsPage(BasePage):
             # keep the scan running and the totals accurate (from Finished), but stop
             # building widgets so a huge result set can't exhaust memory.
             return
-        record = {"group": group, "keeper": group.keeper, "checks": []}
+        record = {"group": group, "keeper": group.keeper, "checks": [], "ignored_files": set()}
         card = self._build_card(group, record)
         record["widget"] = card
         self._groups.append(record)
@@ -464,15 +464,39 @@ class ResultsPage(BasePage):
     def _selected(self) -> list[tuple[dict, FileEntry]]:
         out = []
         for rec in self._groups:
-            if rec.get("ignored"):                    # ignored groups take no action
+            if rec.get("ignored"):                    # whole group ignored -> no action
                 continue
+            ig = rec.get("ignored_files") or set()    # individually ignored (via Ignore Folder)
             for check, f in rec["checks"]:
-                if check.get_active():
+                if id(f) not in ig and check.get_active():
                     out.append((rec, f))
             da = rec.get("delete_all")
-            if da is not None and da.get_active() and rec.get("keeper") is not None:
-                out.append((rec, rec["keeper"]))      # delete-all also removes the keeper
+            keeper = rec.get("keeper")
+            if (da is not None and da.get_active() and keeper is not None
+                    and id(keeper) not in ig):
+                out.append((rec, keeper))             # delete-all also removes the keeper
         return out
+
+    def apply_ignored_folders(self, folders: list[str]) -> None:
+        """Grey out (and drop from the selection) any current result rows whose file lives under
+        a now-ignored folder. Called when a folder is ignored after a scan has produced results."""
+        import os
+        dirs = [f.rstrip("/") for f in folders if f]
+        if not dirs:
+            return
+        changed = False
+        for rec in self._groups:
+            ig = rec.setdefault("ignored_files", set())
+            for f in rec["group"].files:
+                if any(f.path == d or f.path.startswith(d + os.sep) for d in dirs):
+                    if id(f) not in ig:
+                        ig.add(id(f))
+                        changed = True
+                        row = rec.get("rows", {}).get(id(f))
+                        if row is not None:
+                            row.set_sensitive(False)   # grey: no action will be taken
+        if changed:
+            self._refresh_selection()
 
     def _refresh_selection(self) -> None:
         sel = self._selected()

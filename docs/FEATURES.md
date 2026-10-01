@@ -129,9 +129,20 @@ label mapped to one or more extensions (e.g. JPG → `.jpg`/`.jpeg`, RAW → `.c
   keeps only matching files. An empty list = no filter = scan everything. The chosen set persists
   in Settings between runs.
 
-### 5.5 Ignore list (`ScanOptions.ignore_paths`, `settings.ignored_paths`)
-Exact file paths the user chose to **Ignore** (see §6.5) are skipped by `walk()` in **all future
-scans**, so deliberately-kept duplicates never get re-flagged. Clearable from Settings.
+### 5.5 Ignore list — files and folders
+Two skip lists, applied by `walk()` in **all future scans**:
+- **Ignored files** (`ScanOptions.ignore_paths` / `settings.ignored_paths`) — exact files the user
+  chose to **Ignore Files** on a Results group (§6.5).
+- **Ignored folders** (`ScanOptions.ignore_dirs` / `settings.ignored_folders`) — whole folders
+  (and all their contents) chosen via **Ignore Folder** on the Scan page. `walk()` skips an
+  ignored directory at pop time, so nothing beneath it is read.
+
+Both are managed on the **Ignored page** (§13), where any entry can be resumed.
+
+### 5.6 Ignore Folder (Scan page)
+An **Ignored items** card with an **Ignore Folder** button (folder chooser → adds to
+`settings.ignored_folders`), an InfoHint (*"Ignored folders will prevent an entire folder and all
+its contents from being scanned…"*), and an **Open Ignored page** shortcut.
 
 ---
 
@@ -176,6 +187,9 @@ ellipsizes with a tooltip.
 - **Ignore Files** (+ InfoHint) — a toggle that **greys out** the group's rows (no action taken),
   drops them from the selection, and adds their paths to the **ignore list** (§5.5) so future
   scans skip them. Reversible.
+- **Folder ignore reflection** — when a folder is ignored (Scan page), `apply_ignored_folders()`
+  greys out and de-selects every current result row whose file lives under that folder, across
+  all groups (per-row `ignored_files`).
 - **SpotCheck** — opens the confirmation view (§6.6).
 
 ### 6.6 Removal flow
@@ -271,7 +285,18 @@ the UI decides how to render, keeping `core/` GTK-free.
 
 ---
 
-## 13. Tests (`tests/`)
+## 13. Ignored page (`ui/pages/ignored.py`)
+
+A dedicated sidebar page (eye-slash icon) that tracks everything the user chose to skip:
+- A **top explainer card** with an InfoHint (*"Resumed files and locations are removed from this
+  list"*).
+- **Ignored folders** and **Ignored files** sections, each row showing the path and a **Resume
+  scanning** button that removes it from the ignore list so the next scan considers it again.
+- Reads/writes `settings.ignored_folders` / `settings.ignored_paths`; refreshes on show.
+
+---
+
+## 14. Tests (`tests/`)
 
 Pure-core tests run anywhere; UI smoke needs a display. Current suite: **56 passing**. Coverage
 includes purity, hashers, scanner (incl. inode-collapse, walk streaming, file-type & ignore
