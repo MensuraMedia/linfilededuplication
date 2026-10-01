@@ -35,6 +35,7 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
     """
     out: list[FileEntry] = []
     matcher = exclusions.compile(opts.exclusions, opts.exclude)
+    type_filter = {e.lower() for e in opts.file_types}   # empty = keep all types
     stack = [opts.root]
     last_tick = 0.0
 
@@ -69,6 +70,8 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
                             if st.st_size < opts.min_size:
                                 continue
                             ext = os.path.splitext(name)[1].lower()
+                            if type_filter and ext not in type_filter:
+                                continue                 # file-type filter active, ext not wanted
                             out.append(FileEntry(
                                 path=de.path, size=st.st_size, mtime=st.st_mtime,
                                 is_image=ext in _IMAGE_EXT, dev=st.st_dev, ino=st.st_ino))
@@ -187,6 +190,7 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
         files_scanned=len(entries),
         groups=len(groups),
         reclaimable=sum(g.reclaimable for g in groups),
+        occupied_bytes=sum(f.size for g in groups for f in g.files),
         seconds=time.time() - start,
         notes=notes,
     )

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from gi.repository import Adw, Gtk
 
+from linfilededuplication.core import filetypes
 from linfilededuplication.core.options import TIER_ADVANCED, TIER_SIMPLE, ScanOptions
 from linfilededuplication.i18n import _
 from linfilededuplication.ui.pages.base import BasePage
@@ -60,6 +61,9 @@ class ScanPage(BasePage):
         grp.add(self.min_row)
         self.add(grp)
 
+        # file-type filter (columns of popular types, each with an "All")
+        self.add(self._filetypes_section(list(getattr(s, "file_types", []))))
+
         # run + progress
         self.run_btn = Gtk.Button(label=_("Start scan"))
         self.run_btn.add_css_class("suggested-action")
@@ -82,6 +86,88 @@ class ScanPage(BasePage):
         c.connect("progress", self._on_progress)
         c.connect("scan-finished", self._on_finished)
         c.connect("scan-error", self._on_error)
+
+    # --- file-type filter ------------------------------------------------
+    def _filetypes_section(self, saved: list[str]) -> Gtk.Widget:
+        self._syncing = False
+        self._type_checks: dict[Gtk.CheckButton, list[str]] = {}
+        self._cat_groups: dict[str, tuple[Gtk.CheckButton, list[Gtk.CheckButton]]] = {}
+        saved_set = {e.lower() for e in saved}
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.add_css_class("app-card")
+        card.add_css_class("app-savings")              # reuse the comfortable card padding
+        title = Gtk.Label(label=_("File types to scan"), xalign=0.0)
+        title.add_css_class("app-group-title")
+        hint = Gtk.Label(xalign=0.0, wrap=True, label=_(
+            "All types are scanned by default. Tick a column's All, or pick individual "
+            "types, to limit the scan to just those."))
+        hint.add_css_class("app-dim")
+        hint.add_css_class("app-small")
+        card.append(title)
+        card.append(hint)
+
+        flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
+                           min_children_per_line=1, max_children_per_line=4,
+                           column_spacing=20, row_spacing=14)
+        for cat in filetypes.CATEGORIES:
+            flow.append(self._category_column(cat, saved_set))
+        card.append(flow)
+        return card
+
+    def _category_column(self, cat: dict, saved_set: set[str]) -> Gtk.Widget:
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        all_cb = Gtk.CheckButton(label=_("All {c}").format(c=cat["label"]))
+        all_cb.add_css_class("app-cat-all")
+        col.append(all_cb)
+        cbs: list[Gtk.CheckButton] = []
+        for t in cat["types"]:
+            cb = Gtk.CheckButton(label=t["label"])
+            cb.set_margin_start(16)
+            # default checked; if a saved selection exists, restore from it
+            cb.set_active(all(e in saved_set for e in t["exts"]) if saved_set else True)
+            self._type_checks[cb] = t["exts"]
+            cb.connect("toggled", lambda _c, k=cat["key"]: self._sync_cat(k))
+            cbs.append(cb)
+            col.append(cb)
+        all_cb.connect("toggled", lambda c, cbs=cbs: self._toggle_all(c, cbs))
+        self._cat_groups[cat["key"]] = (all_cb, cbs)
+        self._sync_cat(cat["key"])                     # set All's initial (checked/mixed)
+        return col
+
+    def _toggle_all(self, all_cb: Gtk.CheckButton, cbs: list[Gtk.CheckButton]) -> None:
+        if self._syncing:
+            return
+        self._syncing = True
+        if all_cb.get_inconsistent():                  # a click on a mixed box -> select all
+            all_cb.set_inconsistent(False)
+            all_cb.set_active(True)
+        for cb in cbs:
+            cb.set_active(all_cb.get_active())
+        self._syncing = False
+
+    def _sync_cat(self, key: str) -> None:
+        if self._syncing:
+            return
+        all_cb, cbs = self._cat_groups[key]
+        n = sum(cb.get_active() for cb in cbs)
+        self._syncing = True
+        all_cb.set_inconsistent(0 < n < len(cbs))
+        all_cb.set_active(n == len(cbs))
+        self._syncing = False
+
+    def _selected_file_types(self) -> list[str]:
+        """Selected extensions, or [] when everything is checked (= scan all types)."""
+        selected: list[str] = []
+        all_checked = True
+        for cb, exts in self._type_checks.items():
+            if cb.get_active():
+                selected += exts
+            else:
+                all_checked = False
+        if all_checked or not selected:                # all or (defensively) none -> no filter
+            return []
+        return filetypes.normalize(selected)
 
     # --- controls --------------------------------------------------------
     def _on_tier(self, btn: Gtk.ToggleButton) -> None:
@@ -114,6 +200,7 @@ class ScanPage(BasePage):
             keep_newest_backup=s.keep_newest_backup,
             exclusions=list(s.exclusions),
             exclude=list(getattr(s, "custom_excludes", [])),
+            file_types=self._selected_file_types(),
             advanced_similar=(self.tier == TIER_ADVANCED),
             similar_threshold=s.similar_threshold,
         )
@@ -132,6 +219,7 @@ class ScanPage(BasePage):
         s.find_images = self.sw_images.get_active()
         s.include_hidden = self.sw_hidden.get_active()
         s.min_size_mb = max(1, int(self.min_row.get_value()))
+        s.file_types = self._selected_file_types()
         s.save()
         self.window.start_scan(self._options())
 

@@ -13,6 +13,7 @@ from linfilededuplication.ui.pages.base import BasePage
 from linfilededuplication.ui.widgets.common import badge, icon
 from linfilededuplication.ui.widgets.info_hint import InfoHint
 from linfilededuplication.ui.widgets.scan_spinner import RadarSpinner
+from linfilededuplication.ui.widgets.space_chart import SpaceChart
 
 
 class ResultsPage(BasePage):
@@ -52,6 +53,23 @@ class ResultsPage(BasePage):
         self.scan_caption = cap
         cap.set_visible(False)
         self.add(cap)
+
+        # space-savings panel: a headline sentiment + a before/after bar chart
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        panel.add_css_class("app-card")
+        panel.add_css_class("app-savings")
+        self.savings_head = Gtk.Label(xalign=0.0, use_markup=True, wrap=True)
+        self.savings_head.add_css_class("app-savings-head")
+        self.savings_sub = Gtk.Label(xalign=0.0, wrap=True)
+        self.savings_sub.add_css_class("app-dim")
+        self.savings_sub.add_css_class("app-small")
+        self.space_chart = SpaceChart()
+        panel.append(self.savings_head)
+        panel.append(self.savings_sub)
+        panel.append(self.space_chart)
+        self.savings_panel = panel
+        panel.set_visible(False)
+        self.add(panel)
 
         self.summary = Gtk.Label(label="", xalign=0.0)
         self.summary.add_css_class("app-dim")
@@ -97,6 +115,7 @@ class ResultsPage(BasePage):
         self.summary.set_text("")               # the radar shows scanning; no text needed
         self.action_bar.set_visible(False)
         self._scan_start = time.monotonic()
+        self.savings_panel.set_visible(False)
         self.scan_root.set_text(_("Scanning {p}").format(p=_root))
         self.scan_activity.set_text("")
         self.scan_caption.set_visible(True)
@@ -138,7 +157,23 @@ class ResultsPage(BasePage):
             summary += _(" · showing the first {n} — narrow the scan to act on the rest").format(
                 n=len(self._groups))
         self.summary.set_text(summary)
+        self._show_savings(fin)
         self.action_bar.set_visible(True)
+
+    def _show_savings(self, fin) -> None:
+        if fin.reclaimable <= 0 or fin.occupied_bytes <= 0:
+            self.savings_panel.set_visible(False)
+            return
+        freed = human_bytes(fin.reclaimable)
+        after = human_bytes(max(0, fin.occupied_bytes - fin.reclaimable))
+        now = human_bytes(fin.occupied_bytes)
+        self.savings_head.set_markup(
+            _("You can free up <span foreground=\"#2ec27e\">{b}</span>").format(b=freed))
+        self.savings_sub.set_text(
+            _("Across {g} duplicate groups · {now} now → {after} after cleanup").format(
+                g=fin.groups, now=now, after=after))
+        self.space_chart.set_values(fin.occupied_bytes, fin.reclaimable)
+        self.savings_panel.set_visible(True)
         for note in fin.notes:
             self.window.toast(note)
 

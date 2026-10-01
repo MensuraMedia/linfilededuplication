@@ -33,6 +33,7 @@ class Settings:
     keep_newest_backup: bool = True
     similar_threshold: float = 0.55
     exclusions: list[str] = field(default_factory=lambda: list(DEFAULT_ON))
+    file_types: list[str] = field(default_factory=list)   # [] = all types
 
     @classmethod
     def load(cls) -> "Settings":

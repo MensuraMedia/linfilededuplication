@@ -50,6 +50,7 @@ class Finished(ScanEvent):
     cancelled: bool = False
     files_scanned: int = 0
     groups: int = 0
-    reclaimable: int = 0
+    reclaimable: int = 0            # bytes freed if every duplicate is removed (non-keepers)
+    occupied_bytes: int = 0         # total bytes held by all duplicate-group files (before)
     seconds: float = 0.0
     notes: list[str] = field(default_factory=list)
