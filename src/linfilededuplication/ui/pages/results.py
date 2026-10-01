@@ -537,20 +537,43 @@ class ResultsPage(BasePage):
         nuke = sum(1 for rec, _f in sel
                    if rec.get("delete_all") is not None and rec["delete_all"].get_active())
         if nuke:                                       # some groups keep no copy at all
-            body = _("The selected files move to Trash and can be restored from your file "
-                     "manager.\n\n⚠ {n} group(s) are set to “Delete all copies” — every copy "
-                     "in those groups will be removed, leaving nothing behind.").format(n=nuke)
+            body = _("These files move to Trash and can be restored from your file manager.\n"
+                     "⚠ {n} group(s) are set to “Delete all copies” — every copy in those groups "
+                     "will be removed, leaving nothing behind.").format(n=nuke)
         else:
-            keepers = {rec["keeper"].name for rec, _f in sel if rec["keeper"]}
-            body = _("The selected copies move to Trash and can be restored from your file "
-                     "manager. Kept originals: {k}.").format(k=", ".join(sorted(keepers))[:200])
+            body = _("These files move to Trash and can be restored from your file manager.")
         dialog = Adw.AlertDialog(
             heading=_("Move {n} files to Trash?").format(n=len(sel)), body=body)
+        dialog.set_extra_child(self._file_list_widget([f for _r, f in sel]))
         dialog.add_response("cancel", _("Cancel"))
         dialog.add_response("ok", _("Move to Trash"))
         dialog.set_response_appearance("ok", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.set_default_response("cancel")
         dialog.choose(self.window, None, lambda d, r: self._do_trash(d, r, sel))
+
+    def _file_list_widget(self, files: list[FileEntry]) -> Gtk.Widget:
+        """A scrollable, wide, non-wrapping list of the files an action will affect, so long
+        names/paths stay on one line (horizontal scroll) instead of wrapping in the dialog."""
+        sw = Gtk.ScrolledWindow()
+        sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        sw.set_min_content_width(560)
+        sw.set_min_content_height(170)
+        sw.set_max_content_height(300)
+        sw.add_css_class("app-card")
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        box.set_margin_top(8)
+        box.set_margin_bottom(8)
+        box.set_margin_start(10)
+        box.set_margin_end(10)
+        for f in files:
+            lbl = Gtk.Label(label=f.path, xalign=0.0)
+            lbl.add_css_class("app-mono")
+            lbl.add_css_class("app-small")
+            lbl.set_wrap(False)
+            lbl.set_ellipsize(0)                       # PANGO_ELLIPSIZE_NONE -> full text, scrolls
+            box.append(lbl)
+        sw.set_child(box)
+        return sw
 
     def _do_trash(self, dialog, result, sel) -> None:
         if dialog.choose_finish(result) != "ok":

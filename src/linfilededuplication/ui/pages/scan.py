@@ -37,7 +37,6 @@ class ScanPage(BasePage):
         toprow.append(Gtk.Box(hexpand=True))        # spacer pushes Start scan to the right
         self.run_btn = Gtk.Button(label=_("Start scan"))
         self.run_btn.add_css_class("suggested-action")
-        self.run_btn.add_css_class("pill")
         self.run_btn.set_halign(Gtk.Align.END)
         self.run_btn.set_valign(Gtk.Align.CENTER)
         self.run_btn.connect("clicked", self._on_run_clicked)
