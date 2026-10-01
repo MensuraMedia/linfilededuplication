@@ -12,7 +12,7 @@ from linfilededuplication.services import actions
 from linfilededuplication.ui.pages.base import BasePage
 from linfilededuplication.ui.widgets.common import badge, icon
 from linfilededuplication.ui.widgets.info_hint import InfoHint
-from linfilededuplication.ui.widgets.scan_spinner import RadarSpinner
+from linfilededuplication.ui.widgets.ring_loader import RingLoader
 from linfilededuplication.ui.widgets.space_chart import SpaceChart
 
 
@@ -31,7 +31,7 @@ class ResultsPage(BasePage):
         spin_box = Gtk.Box(halign=Gtk.Align.CENTER)
         spin_box.set_margin_top(4)
         spin_box.set_margin_bottom(4)
-        self.spinner = RadarSpinner(100)        # shown below the title while scanning
+        self.spinner = RingLoader(150)          # percentage ring shown below the title
         spin_box.append(self.spinner)
         self.add(spin_box)
 
@@ -127,7 +127,8 @@ class ResultsPage(BasePage):
         self.scan_caption.set_visible(True)
         self.spinner.start()
 
-    def _on_progress(self, _c, _fraction: float, phase: str, detail: str) -> None:
+    def _on_progress(self, _c, fraction: float, phase: str, detail: str) -> None:
+        self.spinner.set_progress(fraction, phase)   # accurate % from files processed
         if detail:                              # a path (walk/hash/image) or a short phase note
             self.scan_activity.set_text(detail)
 

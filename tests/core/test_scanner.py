@@ -3,7 +3,7 @@ from __future__ import annotations
 from linfilededuplication.core import events
 from linfilededuplication.core.model import KIND_EXACT
 from linfilededuplication.core.options import ScanOptions
-from linfilededuplication.core.scanner import scan, walk
+from linfilededuplication.core.scanner import find_exact_groups, scan, walk
 
 
 def _collect(opts):
@@ -74,6 +74,25 @@ def test_walk_no_emit_when_callback_absent(tmp_path):
     # walk must still work with no emit callback (tests / CLI use it directly)
     names = {e.name for e in walk(ScanOptions(root=str(tmp_path), min_size=1))}
     assert "a.dat" in names
+
+
+def test_overall_progress_counts_every_file(tmp_path):
+    # 3 identical (candidates) + 7 unique-size files: progress is over ALL files, so the
+    # non-candidate 7 are "done" immediately and the final value accounts for all 10.
+    same = b"s" * 5000
+    for i in range(3):
+        (tmp_path / f"d{i}.dat").write_bytes(same)
+    for i in range(7):
+        (tmp_path / f"u{i}.dat").write_bytes(b"u" * (6000 + i * 50))
+    entries = walk(ScanOptions(root=str(tmp_path), min_size=1))
+    evs: list[events.ScanEvent] = []
+    opts = ScanOptions(root=str(tmp_path), min_size=1, find_images=False)
+    find_exact_groups(entries, opts, evs.append, total_work=len(entries))
+    prog = [e for e in evs if isinstance(e, events.Progress)]
+    assert prog
+    assert prog[-1].done == len(entries) == prog[-1].total     # every file accounted for
+    assert prog[-1].fraction == 1.0
+    assert all(0.0 <= e.fraction <= 1.0 for e in prog)          # never exceeds 100%
 
 
 def test_no_duplicates(tmp_path):

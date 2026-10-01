@@ -64,7 +64,8 @@ def _fingerprint(path: str):
 
 
 def find_similar_groups(images: list[FileEntry], max_distance: int, emit: Emit,
-                        cancel: threading.Event | None = None) -> list[DuplicateGroup]:
+                        cancel: threading.Event | None = None,
+                        progress_base: int = 0, progress_total: int = 0) -> list[DuplicateGroup]:
     """Cluster images whose perceptual hashes are within ``max_distance`` bits.
 
     Two images are joined only when BOTH their pHash and dHash are within ``max_distance``
@@ -83,7 +84,10 @@ def find_similar_groups(images: list[FileEntry], max_distance: int, emit: Emit,
             e.width, e.height = size
             hashed.append((e, ph, dh))
         if i % 16 == 0:
-            emit(events.Progress(i, len(images), "image", e.path))
+            if progress_total:                           # true overall ratio across the whole scan
+                emit(events.Progress(progress_base + i, progress_total, "image", e.path))
+            else:
+                emit(events.Progress(i, len(images), "image", e.path))
 
     parent = list(range(len(hashed)))
 

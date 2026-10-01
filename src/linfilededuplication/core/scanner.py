@@ -90,8 +90,14 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
 
 
 def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
-                      cancel: threading.Event | None = None) -> list[DuplicateGroup]:
-    """Size bucket -> prefix hash -> full SHA-256 -> optional byte verify."""
+                      cancel: threading.Event | None = None,
+                      total_work: int = 0) -> list[DuplicateGroup]:
+    """Size bucket -> prefix hash -> full SHA-256 -> optional byte verify.
+
+    When ``total_work`` is given (total files + any later passes), progress is reported as the
+    TRUE overall ratio: files that need no hashing are already "done", and each hashed candidate
+    advances the count — so the percentage reflects real files scanned, not a phase.
+    """
     by_size: dict[int, list[FileEntry]] = defaultdict(list)
     for e in entries:
         by_size[e.size].append(e)
@@ -99,6 +105,11 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
 
     groups: list[DuplicateGroup] = []
     to_hash = sum(len(g) for g in candidates)
+    if total_work:
+        base = len(entries) - to_hash      # non-candidate files require no hashing: already done
+        total = total_work
+    else:
+        base, total = 0, to_hash           # legacy: progress over candidates only
     done = 0
     for same_size in candidates:
         if cancel is not None and cancel.is_set():
@@ -112,7 +123,7 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
                 emit(events.ScanError(f"Could not read {e.name}", "Check file permissions.", e.path))
             done += 1
             if done % 32 == 0:
-                emit(events.Progress(done, to_hash, "hash", e.path))
+                emit(events.Progress(base + done, total, "hash", e.path))
         for same_prefix in by_prefix.values():
             if len(same_prefix) < 2:
                 continue
@@ -142,7 +153,7 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
                 policy.rank(grp, keep_newest=opts.keep_newest_backup)
                 groups.append(grp)
                 emit(events.GroupFound(grp))
-    emit(events.Progress(to_hash, to_hash, "hash", "Exact matching done"))
+    emit(events.Progress(base + to_hash, total, "hash", "Exact matching done"))
     return groups
 
 
@@ -151,19 +162,25 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
     start = time.time()
     emit(events.ScanStarted(opts.root))
     entries = walk(opts, cancel, emit)
-    emit(events.Progress(len(entries), len(entries), "walk", f"Found {len(entries):,} files"))
+    total_files = len(entries)
+    images = [e for e in entries if e.is_image] if opts.find_images else []
+    do_images = bool(images) and image_perceptual.HAVE_IMAGEHASH
+    # total units of work for an accurate percentage: every file is "scanned" once, and image
+    # files get one more pass (perceptual hashing).
+    total_work = max(1, total_files + (len(images) if do_images else 0))
+    emit(events.Progress(0, 0, "walk", f"Found {total_files:,} files"))   # caption only
 
-    groups = find_exact_groups(entries, opts, emit, cancel)
+    groups = find_exact_groups(entries, opts, emit, cancel, total_work=total_work)
 
     notes: list[str] = []
     if opts.find_images:
-        images = [e for e in entries if e.is_image]
         if not image_perceptual.HAVE_IMAGEHASH:
             notes.append("Install python3-imagehash to find image near-duplicates.")
         elif images:
-            emit(events.Progress(0, len(images), "image", "Perceptual hashing images"))
+            emit(events.Progress(total_files, total_work, "image", "Perceptual hashing images"))
             img_groups = image_perceptual.find_similar_groups(
-                images, opts.hamming, emit, cancel)
+                images, opts.hamming, emit, cancel,
+                progress_base=total_files, progress_total=total_work)
             for grp in img_groups:
                 if opts.detect_backups:
                     backup_detect.analyze_group(grp)
