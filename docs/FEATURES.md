@@ -125,6 +125,10 @@ label mapped to one or more extensions (e.g. JPG → `.jpg`/`.jpeg`, RAW → `.c
 - **Column "All"** — a tri-state checkbox (checked / mixed / empty) selecting the whole column.
 - **"All Files"** (master, above the columns) — a tri-state that selects **every** type and means
   *scan all files, including extensions not listed here*. This is the default.
+- **"Enter Extension"** (free-text, beside All Files, with an InfoHint) — extra extensions to scan,
+  comma/space separated (e.g. `.bak, .csv, .txt, .idx`; a leading dot is optional). These are
+  **added to** the checked types (`settings.custom_extensions`). Empty → just the selections; with
+  All Files ticked everything is scanned regardless.
 - **Semantics:** the selection becomes `ScanOptions.file_types` (a list of extensions); the walk
   keeps only matching files. An empty list = no filter = scan everything. The chosen set persists
   in Settings between runs.

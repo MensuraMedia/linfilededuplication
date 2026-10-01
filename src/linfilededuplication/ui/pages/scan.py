@@ -161,13 +161,28 @@ class ScanPage(BasePage):
         card.append(title)
         card.append(hint)
 
-        # master "All Files": scan every file type, including ones not listed below
+        # master "All Files" + a custom-extension field, on one row
+        toprow = Gtk.Box(spacing=18)
         self._all_files_cb = Gtk.CheckButton(label=_("All Files"))
         self._all_files_cb.add_css_class("app-cat-all")
+        self._all_files_cb.set_valign(Gtk.Align.CENTER)
         self._all_files_cb.set_tooltip_text(_(
             "Scan every file, including types not listed below (default)"))
         self._all_files_cb.connect("toggled", self._toggle_all_files)
-        card.append(self._all_files_cb)
+        toprow.append(self._all_files_cb)
+
+        extbox = Gtk.Box(spacing=8, hexpand=True)
+        extbox.set_valign(Gtk.Align.CENTER)
+        extlbl = Gtk.Label(label=_("Enter Extension"))
+        extlbl.add_css_class("app-small")
+        self._ext_entry = Gtk.Entry(hexpand=True)
+        self._ext_entry.set_placeholder_text(".bak, .csv, .txt, .idx")
+        self._ext_entry.set_text(getattr(self.app.settings, "custom_extensions", ""))
+        extbox.append(extlbl)
+        extbox.append(self._ext_entry)
+        extbox.append(InfoHint(self.window, "custom-extensions"))
+        toprow.append(extbox)
+        card.append(toprow)
 
         flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
                            min_children_per_line=1, max_children_per_line=4,
@@ -239,8 +254,20 @@ class ScanPage(BasePage):
         self._all_files_cb.set_active(gn == total)
         self._syncing = False
 
+    def _custom_extensions(self) -> list[str]:
+        """Parse the free-text extension field: comma/space separated, normalized."""
+        import re
+        text = self._ext_entry.get_text() if hasattr(self, "_ext_entry") else ""
+        parts = [p for p in re.split(r"[,\s]+", text.strip()) if p]
+        return filetypes.normalize(parts)
+
     def _selected_file_types(self) -> list[str]:
-        """Selected extensions, or [] when everything is checked (= scan all types)."""
+        """The extensions to scan: the checked types plus any custom extensions. [] = scan all.
+
+        - All Files checked -> [] (everything; custom is a subset of that, so it's moot).
+        - Otherwise the checked types UNION the custom field.
+        - Nothing checked and nothing custom -> [] (default to all).
+        """
         selected: list[str] = []
         all_checked = True
         for cb, exts in self._type_checks.items():
@@ -248,9 +275,10 @@ class ScanPage(BasePage):
                 selected += exts
             else:
                 all_checked = False
-        if all_checked or not selected:                # all or (defensively) none -> no filter
+        if all_checked:
             return []
-        return filetypes.normalize(selected)
+        merged = filetypes.normalize(selected + self._custom_extensions())
+        return merged if merged else []                # none selected + none custom -> all
 
     # --- controls --------------------------------------------------------
     def _on_tier(self, btn: Gtk.ToggleButton) -> None:
@@ -305,6 +333,7 @@ class ScanPage(BasePage):
         s.include_hidden = self.sw_hidden.get_active()
         s.min_size_mb = max(1, int(self.min_row.get_value()))
         s.file_types = self._selected_file_types()
+        s.custom_extensions = self._ext_entry.get_text().strip()
         s.save()
         self.window.start_scan(self._options())
 
