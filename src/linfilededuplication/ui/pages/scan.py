@@ -107,12 +107,21 @@ class ScanPage(BasePage):
         card.append(title)
         card.append(hint)
 
+        # master "All Files": scan every file type, including ones not listed below
+        self._all_files_cb = Gtk.CheckButton(label=_("All Files"))
+        self._all_files_cb.add_css_class("app-cat-all")
+        self._all_files_cb.set_tooltip_text(_(
+            "Scan every file, including types not listed below (default)"))
+        self._all_files_cb.connect("toggled", self._toggle_all_files)
+        card.append(self._all_files_cb)
+
         flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
                            min_children_per_line=1, max_children_per_line=4,
                            column_spacing=20, row_spacing=14)
         for cat in filetypes.CATEGORIES:
             flow.append(self._category_column(cat, saved_set))
         card.append(flow)
+        self._recompute_master_states()                # set the All / All Files states
         return card
 
     def _category_column(self, cat: dict, saved_set: set[str]) -> Gtk.Widget:
@@ -127,15 +136,14 @@ class ScanPage(BasePage):
             # default checked; if a saved selection exists, restore from it
             cb.set_active(all(e in saved_set for e in t["exts"]) if saved_set else True)
             self._type_checks[cb] = t["exts"]
-            cb.connect("toggled", lambda _c, k=cat["key"]: self._sync_cat(k))
+            cb.connect("toggled", lambda _c: self._on_type_toggled())
             cbs.append(cb)
             col.append(cb)
-        all_cb.connect("toggled", lambda c, cbs=cbs: self._toggle_all(c, cbs))
+        all_cb.connect("toggled", lambda c, k=cat["key"], cbs=cbs: self._toggle_all(k, c, cbs))
         self._cat_groups[cat["key"]] = (all_cb, cbs)
-        self._sync_cat(cat["key"])                     # set All's initial (checked/mixed)
         return col
 
-    def _toggle_all(self, all_cb: Gtk.CheckButton, cbs: list[Gtk.CheckButton]) -> None:
+    def _toggle_all(self, key: str, all_cb: Gtk.CheckButton, cbs: list[Gtk.CheckButton]) -> None:
         if self._syncing:
             return
         self._syncing = True
@@ -145,15 +153,36 @@ class ScanPage(BasePage):
         for cb in cbs:
             cb.set_active(all_cb.get_active())
         self._syncing = False
+        self._recompute_master_states()
 
-    def _sync_cat(self, key: str) -> None:
+    def _toggle_all_files(self, cb: Gtk.CheckButton) -> None:
         if self._syncing:
             return
-        all_cb, cbs = self._cat_groups[key]
-        n = sum(cb.get_active() for cb in cbs)
         self._syncing = True
-        all_cb.set_inconsistent(0 < n < len(cbs))
-        all_cb.set_active(n == len(cbs))
+        if cb.get_inconsistent():                      # a click on a mixed box -> select all
+            cb.set_inconsistent(False)
+            cb.set_active(True)
+        for tcb in self._type_checks:
+            tcb.set_active(cb.get_active())
+        self._syncing = False
+        self._recompute_master_states()
+
+    def _on_type_toggled(self) -> None:
+        if self._syncing:
+            return
+        self._recompute_master_states()
+
+    def _recompute_master_states(self) -> None:
+        """Refresh every column's All and the global All Files to checked / mixed / empty."""
+        self._syncing = True
+        for _key, (all_cb, cbs) in self._cat_groups.items():
+            n = sum(c.get_active() for c in cbs)
+            all_cb.set_inconsistent(0 < n < len(cbs))
+            all_cb.set_active(n == len(cbs))
+        total = len(self._type_checks)
+        gn = sum(c.get_active() for c in self._type_checks)
+        self._all_files_cb.set_inconsistent(0 < gn < total)
+        self._all_files_cb.set_active(gn == total)
         self._syncing = False
 
     def _selected_file_types(self) -> list[str]:
