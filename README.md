@@ -18,7 +18,7 @@ nothing is changed until you review the groups and confirm, and removals go to T
 ## Table of contents
 
 - [Feature tour](#feature-tour)
-- [Everything LinFileDedup does](#everything-dedupedash-does)
+- [Everything LinFileDedup does](#everything-linfilededuplication-does)
 - [Desktop integration](#desktop-integration)
 - [Install](#install)
 - [Usage](#usage)
@@ -34,8 +34,9 @@ nothing is changed until you review the groups and confirm, and removals go to T
 
 ### SpotCheck — confirm before you remove
 
-A large side-by-side view of a duplicate group. See each file's real content — full image
-previews or readable document snippets — with the keeper first, so you can be sure before
+A large side-by-side view of a duplicate group. See each file's real content — full **image**
+previews, a page-by-page **PDF** viewer (synced across panels, with zoom), an inline **video**
+player (with thumbnails), or readable document snippets — keeper first, so you can be sure before
 acting. It is a gate, not an actor: closing it changes nothing.
 
 ![SpotCheck](docs/screenshots/spotcheck.png)
@@ -50,11 +51,17 @@ acting. It is a gate, not an actor: closing it changes nothing.
 | --- | --- |
 | ![Scan scope](docs/screenshots/settings-scope.png) | |
 
+### Scan scope & ignored items
+
+| Scan — tiers, file-type filter, custom extensions | Ignored — files & folders you skip |
+| --- | --- |
+| ![Scan](docs/screenshots/scan.png) | ![Ignored](docs/screenshots/ignored.png) |
+
 ### The basics
 
-| Overview | Scan |
+| Overview | Live progress — a real percentage |
 | --- | --- |
-| ![Overview](docs/screenshots/overview.png) | ![Scan](docs/screenshots/scan.png) |
+| ![Overview](docs/screenshots/overview.png) | ![Scanning](docs/screenshots/scan-ring.png) |
 
 Interactive design mockups (light and dark) live in
 [`docs/mockups/dedupedash-mockups.html`](docs/mockups/dedupedash-mockups.html).
@@ -68,8 +75,10 @@ Interactive design mockups (light and dark) live in
 - **Exact duplicates** — a fast, layered pipeline: size pre-filter → progressive partial hash
   (xxHash or BLAKE2b) → full **SHA-256** → optional **byte-for-byte** verification. A match is
   a real match, never a hash coincidence.
-- **Image near-duplicates** — perceptual hashing (aHash/dHash/pHash) groups images that look
-  the same after resizing, cropping, or re-saving, with a tunable Hamming-distance threshold.
+- **Image near-duplicates** — perceptual hashing groups images that look the same after resizing,
+  cropping, or re-saving, with a tunable Hamming-distance threshold. Matching requires **both
+  pHash and dHash to agree**, which filters out the smooth-image false positives that a single
+  hash produces — found and fixed by testing on a real 400+ photo set.
 - **Near-identical content (Advanced)** — **content-defined chunking** fingerprints files by
   shift-resistant anchors and groups documents that share most content even after an edit or
   insertion.
@@ -85,11 +94,20 @@ Interactive design mockups (light and dark) live in
 - **Advanced Scan** — adds the content-similarity, fuzzy, and metadata passes for documents
   and binaries, plus finer control.
 
-### Keep policy
+### Keep policy — and it's transparent
 
 Every group keeps exactly one file (the **keeper**); the rest become candidates. The order:
 highest resolution (images) → largest size → original (non-derived) filename → preferred folder
-→ oldest file. Nothing derived is ever kept over an original.
+→ oldest file. Nothing derived is ever kept over an original. Results shows a **"How LinFileDedup
+decides what to keep"** card that spells out these rules (newest / largest / backups / name /
+hard-linked), so the automatic choices are never a mystery.
+
+### Space savings at a glance
+
+When a scan finishes, Results leads with a headline — **"You can free up N GB"** — and a
+before/after **capacity-bar chart** (space now vs. after cleanup), so the payoff is clear before
+you act. Results are revealed only once the progress loader reaches 100% and fades, never
+half-formed.
 
 ### Backup awareness
 
@@ -103,17 +121,26 @@ highest resolution (images) → largest size → original (non-derived) filename
 ### SpotCheck & content previews
 
 - Large keeper-first comparison of a group, opened from Results.
-- **Preview providers** show read-only snippets by type: full **images**; first lines of
-  **text/code/config**; first-page text of **PDF** (via poppler or pypdf); paragraphs / sheet
-  names of **office** documents (docx/odt/pptx/xlsx); entry lists of **archives**; and a
-  metadata card for anything else. Providers never execute a file, follow links out, or touch
-  the network, and are bounded by size/time budgets.
+- **Images** render full; **PDFs** render as actual pages in a page-by-page viewer (Prev/Next,
+  page N of M, actual-size zoom) that's **synced across panels** for a true A/B compare;
+  **videos** get a thumbnail and an inline player (or "Play in default player" when the GTK media
+  backend isn't installed).
+- **Preview providers** show read-only snippets for everything else: first lines of
+  **text/code/config**; paragraphs / sheet names of **office** documents (docx/odt/pptx/xlsx);
+  entry lists of **archives**; and a metadata card as a fallback. Providers never execute a file,
+  follow links out, or touch the network, and are bounded by size/time budgets.
 
-### Scan scope (exclusions)
+### Choose exactly what to scan
 
-Presets that skip files an app or the OS can recreate — **system files, caches, package/build
-artifacts, version-control internals, app/runtime files, stubs, and Trash** — plus custom
-globs. Excluded paths are never scanned **and never removable**.
+- **File-type filter** — columns of popular types (**Images / Video / Music / Documents**), each
+  with a tri-state **All**, plus a master **All Files**, and a free-text **Enter Extension** field
+  for anything else (e.g. `.bak, .csv, .idx`) that's *added* to your selections.
+- **Scan scope (exclusions)** — presets that skip files an app or the OS can recreate (**system
+  files, caches, package/build artifacts, version-control internals, Trash**) plus custom globs.
+  Excluded paths are never scanned and never removable.
+- **Ignore files & folders** — on Results, **Ignore Files** or **Ignore Folder** greys out rows
+  (no action taken) and skips them in **every future scan**; the dedicated **Ignored** page lists
+  everything you've skipped, with **Resume scanning** on any entry.
 
 ### In-app guidance
 
@@ -124,11 +151,22 @@ globs. Excluded paths are never scanned **and never removable**.
 
 ### Safety
 
-- Read-only scans; nothing removed without an `Adw.AlertDialog` confirmation.
-- **Dry-run preview** by default; **Move to Trash** (recoverable) or **hard-link** (reclaim
-  space, keep every path) instead of permanent deletion.
-- Protected system paths refused; a group's keeper can never be deleted; unreadable groups are
-  skipped, never treated as removable.
+- Read-only scans; nothing removed without an `Adw.AlertDialog` confirmation — which lists the
+  affected files in a scrollable, non-wrapping list so you can review before you commit.
+- **Delete All Duplicates** → **Move to Trash** (recoverable) or **Hard-link** (reclaim space,
+  keep every path) instead of permanent deletion. A per-group **Delete All** can remove every
+  copy when you want none kept (Trash-only, with a clear guard and confirmation).
+- Protected system paths refused; a group's keeper can never be deleted by accident; unreadable
+  groups are skipped, never treated as removable.
+
+### Progress & performance
+
+- A circular **percentage loader** shows the **true ratio of files scanned** (not a cosmetic
+  spinner): every file counts, each hashed candidate and perceptually-hashed image advances it,
+  and it eases to 100% before the results appear.
+- **Memory-safe on huge scans** — thumbnails decode scaled (not full-resolution), rendered group
+  cards are capped, and the file model is slot-based, so a full home-directory scan stays bounded
+  (hundreds of MB, not gigabytes).
 
 ### Desktop-native
 
@@ -160,9 +198,10 @@ sudo apt install ./dist/linfilededuplication_0.1.0_all.deb
 ```
 
 Depends on `python3-gi`, `python3-gi-cairo`, `gir1.2-gtk-4.0`, `gir1.2-adw-1`. Recommends
-`python3-pil`, `python3-imagehash`, `python3-xxhash`, `gir1.2-xapp-1.0` (tray). Suggests
-`python3-tlsh` (fuzzy) and `poppler-utils` (PDF previews). Optional pieces are detected at
-runtime and degrade gracefully when absent.
+`python3-pil`, `python3-imagehash`, `python3-xxhash`, `gir1.2-xapp-1.0` (tray), `poppler-utils`
+(PDF pages), `libgtk-4-media-gstreamer` (SpotCheck video playback), and `ffmpegthumbnailer`
+(video thumbnails). Suggests `python3-tlsh` (fuzzy). Optional pieces are detected at runtime and
+degrade gracefully when absent.
 
 ### From source (development)
 
@@ -187,19 +226,21 @@ scripts/uninstall.sh          # remove
 
 ## Usage
 
-1. Open **Scan**, choose a folder, pick **Simple** or **Advanced**, and start.
-2. Watch duplicate groups appear on **Results** as the scan runs.
-3. Review each group — the keeper is highlighted; extras are pre-selected. Open **SpotCheck**
-   to compare content, and check the **Probable backup** / **Newest / Older** markers.
-4. Choose **Move to Trash** or **Hard-link**, confirm, and reclaim the space.
+1. Open **Scan**, choose a folder, pick **Simple** or **Advanced**, optionally narrow the
+   **file types**, and start (the button is top-right on the tier row).
+2. A circular **percentage loader** shows the real progress as files are scanned; when it reaches
+   100% and fades, **Results** appears with a **"You can free up N GB"** headline and the
+   before/after chart.
+3. Review each group — the keeper shows a green check, candidates a red one. Open **SpotCheck**
+   to compare content, and check the **Probable backup** / **Newest / Older** markers. Right-click
+   a row for **Explore here / Open / Copy path**; use **Ignore Files/Folder** to skip things.
+4. Choose **Hard-link** or **Delete All Duplicates**, review the file list, confirm, and reclaim
+   the space.
 
-While a scan runs, a **radar-sweep** indicator appears in the header bar — kept visible for a
-moment even on a sub-second scan, so you always see that work happened:
+![Live progress](docs/screenshots/scan-ring.png)
 
-![Scanning indicator](docs/screenshots/scan-radar.gif)
-
-Tune matching, backups, safety, and **Scan scope** in **Settings**. Hover any `(i)` for help,
-or open **Knowledge** to search terms.
+Tune matching, backups, safety, and **Scan scope** in **Settings**; manage skipped items on the
+**Ignored** page. Hover any `(i)` for help, or open **Knowledge** to search terms.
 
 ---
 
@@ -218,6 +259,7 @@ src/linfilededuplication/
     metadata.py         EXIF + filename similarity
     backup_detect.py    probable-backup signals + age ranking
     exclusions.py       scan-scope presets + custom globs
+    filetypes.py        popular file-type categories for the scan filter
     policy.py           keep/delete ranking (incl. keep-newest for backups)
     preview.py          read-only content previews for SpotCheck
     glossary.py         load + search the local glossary/FAQ
@@ -255,11 +297,13 @@ blocked, so a stray GTK import fails the build.
 
 ## Roadmap
 
-Done: the exact engine, image near-duplicates, Advanced Scan (content similarity, fuzzy,
-metadata), backups, SpotCheck, previews, exclusions, info icons, the Knowledge page, and desktop
-integration (launcher, menu, tray, Alt-Tab, icon, `.deb`). Next: a headless CLI, a Flatpak,
-SpotCheck synced-zoom and A/B difference view, and audio/video preview providers. Details in
-[`docs/CONCEPT.md`](docs/CONCEPT.md).
+Done: the exact engine, image near-duplicates (dual pHash+dHash), Advanced Scan (content
+similarity, fuzzy, metadata), backups, SpotCheck with synced PDF pages and an inline video player,
+previews, exclusions, the file-type filter and custom extensions, ignore files/folders and the
+Ignored page, the space-savings chart and keep-rules card, the real-progress percentage loader,
+info icons, the Knowledge page, and desktop integration (launcher, menu, tray, Alt-Tab, icon,
+`.deb`). Next: a persistent scan **History**, a headless CLI, a Flatpak, and a SpotCheck A/B
+difference view. Details in [`docs/CONCEPT.md`](docs/CONCEPT.md).
 
 ---
 
