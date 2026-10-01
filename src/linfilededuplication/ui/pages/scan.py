@@ -201,6 +201,7 @@ class ScanPage(BasePage):
             exclusions=list(s.exclusions),
             exclude=list(getattr(s, "custom_excludes", [])),
             file_types=self._selected_file_types(),
+            ignore_paths=list(getattr(s, "ignored_paths", [])),
             advanced_similar=(self.tier == TIER_ADVANCED),
             similar_threshold=s.similar_threshold,
         )

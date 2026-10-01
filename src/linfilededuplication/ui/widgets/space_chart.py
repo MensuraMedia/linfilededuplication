@@ -56,18 +56,8 @@ class SpaceChart(Gtk.DrawingArea):
         bar_x = pad + label_w
         bar_w = max(40.0, w - bar_x - value_w - pad)
         bar_h = 22.0
-        radius = 4.0                           # flatter corners read as a capacity meter
         gap = 30.0
         top = 16.0
-
-        def rrect(x, y, width, height, r):
-            r = min(r, height / 2, max(0.0, width) / 2)
-            cr.new_sub_path()
-            cr.arc(x + width - r, y + r, r, -1.5708, 0)
-            cr.arc(x + width - r, y + height - r, r, 0, 1.5708)
-            cr.arc(x + r, y + height - r, r, 1.5708, 3.1416)
-            cr.arc(x + r, y + r, r, 3.1416, 4.7124)
-            cr.close_path()
 
         def text(s, x, y, color, *, bold=False, size=10.5, align_right_to=None):
             layout = PangoCairo.create_layout(cr)
@@ -88,28 +78,17 @@ class SpaceChart(Gtk.DrawingArea):
 
         def meter(y, label, frac, fill_rgb, value_str):
             text(label, pad, y + bar_h / 2, (fg[0] * 0.78, fg[1] * 0.78, fg[2] * 0.82))
-            # recessed track: dark well + subtle inset border
+            # recessed track: dark well, square corners (no rounding, no gridlines)
             cr.set_source_rgb(0.082, 0.090, 0.106)
-            rrect(bar_x, y, bar_w, bar_h, radius); cr.fill()
-            # gridline ticks every 10% -> a capacity-meter look
-            cr.save()
-            rrect(bar_x, y, bar_w, bar_h, radius); cr.clip()
-            cr.set_line_width(1.0)
-            cr.set_source_rgba(1, 1, 1, 0.07)
-            for k in range(1, 10):
-                gx = bar_x + bar_w * k / 10.0
-                cr.move_to(gx, y + 1); cr.line_to(gx, y + bar_h - 1); cr.stroke()
+            cr.rectangle(bar_x, y, bar_w, bar_h); cr.fill()
             # filled portion
             fw = max(0.0, bar_w * max(0.0, min(1.0, frac)))
             if fw > 1:
                 cr.set_source_rgb(*fill_rgb)
-                rrect(bar_x, y, fw, bar_h, radius); cr.fill()
-                cr.set_source_rgba(1, 1, 1, 0.14)      # top sheen
-                rrect(bar_x, y, fw, bar_h * 0.5, radius); cr.fill()
-            cr.restore()
+                cr.rectangle(bar_x, y, fw, bar_h); cr.fill()
             # inset border
             cr.set_source_rgba(1, 1, 1, 0.14); cr.set_line_width(1.0)
-            rrect(bar_x + 0.5, y + 0.5, bar_w - 1, bar_h - 1, radius); cr.stroke()
+            cr.rectangle(bar_x + 0.5, y + 0.5, bar_w - 1, bar_h - 1); cr.stroke()
             text(value_str, 0, y + bar_h / 2, fg, align_right_to=w - pad, bold=True)
 
         occ = float(self._occupied)

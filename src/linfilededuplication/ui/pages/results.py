@@ -75,21 +75,15 @@ class ResultsPage(BasePage):
         self.formula_card.set_visible(False)
         self.add(self.formula_card)
 
-        self.summary = Gtk.Label(label="", xalign=0.0)
-        self.summary.add_css_class("app-dim")
-        self.add(self.summary)
-
-        self.groups_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
-        self.add(self.groups_box)
-
-        # action bar
+        # action bar — above the findings, below the information card
         bar = Gtk.Box(spacing=12)
         bar.add_css_class("app-card")
         self.sel_label = Gtk.Label(label=_("Nothing selected"), xalign=0.0, hexpand=True)
         self.sel_label.add_css_class("app-small")
         self.btn_link = Gtk.Button(label=_("Hard-link"))
-        self.btn_trash = Gtk.Button(label=_("Move to Trash"))
+        self.btn_trash = Gtk.Button(label=_("Delete All Duplicates"))
         self.btn_trash.add_css_class("destructive-action")
+        self.btn_trash.get_child().set_ellipsize(0)      # never truncate — expand the button
         self.btn_link.set_sensitive(False)
         self.btn_trash.set_sensitive(False)
         self.btn_trash.connect("clicked", self._trash_selected)
@@ -101,6 +95,13 @@ class ResultsPage(BasePage):
         self.action_bar = bar
         self.action_bar.set_visible(False)
         self.add(bar)
+
+        self.summary = Gtk.Label(label="", xalign=0.0)
+        self.summary.add_css_class("app-dim")
+        self.add(self.summary)
+
+        self.groups_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        self.add(self.groups_box)
 
         c = self.window.controller
         c.connect("scan-started", self._on_started)
@@ -250,17 +251,27 @@ class ResultsPage(BasePage):
             xalign=0.0, hexpand=True)           # takes the slack so SpotCheck sits at the right
         meta.add_css_class("app-dim")
         meta.add_css_class("app-small")
-        del_all = Gtk.ToggleButton(label=_("Delete all copies"))
+        del_all = Gtk.ToggleButton(label=_("Delete All"))
         del_all.set_valign(Gtk.Align.CENTER)
         del_all.add_css_class("app-delall")
         del_all.set_tooltip_text(_("Remove every copy in this group — keep none"))
         del_all.connect("toggled", lambda b, rec=record: self._on_delete_all(rec, b))
         record["delete_all"] = del_all
+        ignore = Gtk.ToggleButton(label=_("Ignore Files"))
+        ignore.set_valign(Gtk.Align.CENTER)
+        ignore.add_css_class("app-ignore")
+        ignore.set_tooltip_text(_("Take no action; skip these files in future scans"))
+        ignore.connect("toggled", lambda b, rec=record: self._on_ignore(rec, b))
+        record["ignore"] = ignore
+        ihint = InfoHint(self.window, "ignore-files")
+        ihint.set_valign(Gtk.Align.CENTER)
         spot = Gtk.Button(label=_("SpotCheck"))
         spot.set_valign(Gtk.Align.CENTER)      # a normal raised button, not flat text
         spot.connect("clicked", lambda _b, g=group: self.window.open_spotcheck(g, self._on_spotcheck_applied))
         header.append(meta)
         header.append(del_all)
+        header.append(ignore)
+        header.append(ihint)
         header.append(spot)
         card.append(header)
 
@@ -306,6 +317,25 @@ class ResultsPage(BasePage):
         else:
             toggle.remove_css_class("destructive-action")
         self._refresh_selection()
+
+    def _on_ignore(self, record: dict, toggle: Gtk.ToggleButton) -> None:
+        on = toggle.get_active()
+        record["ignored"] = on
+        for row in record.get("rows", {}).values():
+            row.set_sensitive(not on)                 # grey out: no action will be taken
+        if record.get("delete_all"):                  # can't delete-all an ignored group
+            record["delete_all"].set_sensitive(not on)
+        # persist so future scans skip these files
+        s = self.app.settings
+        paths = [f.path for f in record["group"].files]
+        cur = set(getattr(s, "ignored_paths", []))
+        cur.update(paths) if on else cur.difference_update(paths)
+        s.ignored_paths = sorted(cur)
+        s.save()
+        self._refresh_selection()
+        if on:
+            self.window.toast(
+                _("Ignoring {n} files — they will be skipped in future scans").format(n=len(paths)))
 
     def _file_row(self, f: FileEntry, group: DuplicateGroup, record: dict,
                   name_sg: Gtk.SizeGroup, size_sg: Gtk.SizeGroup, sel_sg: Gtk.SizeGroup) -> Gtk.Box:
@@ -434,6 +464,8 @@ class ResultsPage(BasePage):
     def _selected(self) -> list[tuple[dict, FileEntry]]:
         out = []
         for rec in self._groups:
+            if rec.get("ignored"):                    # ignored groups take no action
+                continue
             for check, f in rec["checks"]:
                 if check.get_active():
                     out.append((rec, f))

@@ -36,6 +36,7 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
     out: list[FileEntry] = []
     matcher = exclusions.compile(opts.exclusions, opts.exclude)
     type_filter = {e.lower() for e in opts.file_types}   # empty = keep all types
+    ignored = set(opts.ignore_paths)                     # files the user chose to ignore
     stack = [opts.root]
     last_tick = 0.0
 
@@ -72,6 +73,8 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
                             ext = os.path.splitext(name)[1].lower()
                             if type_filter and ext not in type_filter:
                                 continue                 # file-type filter active, ext not wanted
+                            if de.path in ignored:
+                                continue                 # user chose to ignore this file
                             out.append(FileEntry(
                                 path=de.path, size=st.st_size, mtime=st.st_mtime,
                                 is_image=ext in _IMAGE_EXT, dev=st.st_dev, ino=st.st_ino))

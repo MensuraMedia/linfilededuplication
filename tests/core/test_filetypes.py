@@ -51,3 +51,11 @@ def test_finished_reports_occupied_bytes(tmp_path):
     assert fin.groups == 1
     assert fin.occupied_bytes == 2 * len(data)      # both copies counted (before cleanup)
     assert fin.reclaimable == len(data)             # one copy freed (after cleanup)
+
+
+def test_walk_skips_ignored_paths(tmp_path):
+    keep = tmp_path / "keep.dat"; keep.write_bytes(b"x" * 4000)
+    skip = tmp_path / "skip.dat"; skip.write_bytes(b"y" * 4000)
+    opts = ScanOptions(root=str(tmp_path), min_size=1, ignore_paths=[str(skip)])
+    names = {e.name for e in walk(opts)}
+    assert names == {"keep.dat"}            # ignored file is not walked
