@@ -1,48 +1,69 @@
 # License
 
-**LinFileDedup (linfilededuplication)** is released under the
+**LinFileDedup (`linfilededuplication`)** is released under the
 **Creative Commons Attribution–NonCommercial 4.0 International License (CC BY‑NC 4.0)**.
 
-Copyright © 2026 MensuraMedia.
+Copyright © 2026 MensuraMedia. All rights reserved except as granted below.
 
-## In plain terms
+LinFileDedup is shared in a spirit of openness. We want people to be able to learn from it,
+rely on it, improve it, and pass it on freely — and we ask, in fairness, that it not be turned
+to commercial gain without a conversation first. The terms below are written plainly and in good
+faith; the formal CC BY‑NC 4.0 text governs where any difference arises.
 
-You are warmly welcome to:
+## What you are free to do
 
-- **Use** the software for any personal, educational, research, or other non‑commercial purpose;
-- **Copy** and share it with others;
-- **Modify** and build upon it; and
-- **Redistribute** it, in original or modified form.
+You are warmly welcome, at no cost and without needing to ask, to:
 
-We ask only two things in return:
+- **Use** the software for any personal, educational, research, community, or other
+  non‑commercial purpose;
+- **Copy** it and share it with anyone;
+- **Modify** it and build upon it, in ways large or small; and
+- **Redistribute** it, in its original form or with your changes.
 
-1. **Attribution.** Please credit *MensuraMedia* and link back to this project, and indicate
-   if you made changes. A simple, honest acknowledgement is all that is needed.
-2. **Non‑commercial use.** Commercial use is not permitted under this license without prior,
-   explicit written permission. If you would like to use LinFileDedup — in whole or in part —
-   in a commercial product, service, or offering, we would be glad to talk; please reach out
-   to arrange terms. We aim to be reasonable and accommodating.
+These freedoms are granted to everyone, equally, and they are not revocable for work you have
+already done in reliance on them.
 
-This is a summary offered in good faith for convenience. The full, legally binding terms are
-the **CC BY‑NC 4.0** license, available at:
+## What we kindly ask in return
 
-  https://creativecommons.org/licenses/by-nc/4.0/legalcode
+1. **Attribution.** Please credit *MensuraMedia*, link back to this project, and note if you
+   have made changes. A simple, honest acknowledgement is all we ask — there is no particular
+   wording required, and we are not precious about the form it takes.
 
-and summarised by Creative Commons at:
+2. **Non‑commercial use.** Commercial use is respectfully reserved and is **not permitted under
+   this license without our prior, explicit, written permission.** This includes selling the
+   software or a derivative of it, bundling it into a paid product or service, or otherwise using
+   it primarily for commercial advantage or monetary compensation. We do not say this to be
+   restrictive for its own sake — only to keep the right to steward the project's commercial use
+   ourselves.
 
-  https://creativecommons.org/licenses/by-nc/4.0/
+If you are unsure whether your intended use is commercial, please simply ask. We would rather
+have a friendly conversation than see anyone caught out by a technicality.
 
-Where anything here and the official license text differ, the official CC BY‑NC 4.0 text governs.
+## Commercial licensing — we're glad to talk
 
-## Commercial licensing
+If you would like to use LinFileDedup — in whole or in part — in a commercial product, service,
+partnership, or any arrangement beyond the non‑commercial scope above, we would genuinely welcome
+the conversation and will do our best to be reasonable and accommodating. Please reach out via
+the project page to request permission and arrange terms:
 
-For commercial use, partnerships, or any arrangement beyond the non‑commercial scope above,
-please contact **MensuraMedia** via the project page at
-https://github.com/MensuraMedia/linfilededuplication to request permission. We welcome the
-conversation.
+> https://github.com/MensuraMedia/linfilededuplication
+
+## The formal terms
+
+This page is a good‑faith summary offered for convenience and clarity. The full, legally binding
+terms are the **Creative Commons Attribution–NonCommercial 4.0 International Public License**:
+
+- Full legal text: https://creativecommons.org/licenses/by-nc/4.0/legalcode
+- Human‑readable summary: https://creativecommons.org/licenses/by-nc/4.0/
+
+Where anything on this page and the official CC BY‑NC 4.0 text differ, the official text governs.
+
+SPDX‑License‑Identifier: CC‑BY‑NC‑4.0
 
 ## No warranty
 
-To the extent permitted by law, the software is provided “as is”, without warranty of any kind.
-The authors are not liable for any claim, damages, or other liability arising from its use.
-Because LinFileDedup can delete or relink files, please keep backups and use the dry‑run preview.
+To the extent permitted by law, the software is provided **“as is”**, without warranty of any
+kind, express or implied. The authors are not liable for any claim, damages, or other liability
+arising from its use. Because LinFileDedup can move files to Trash or replace them with hard
+links, please keep your own backups and make use of the review step and confirmations before
+acting — they are there to protect your data.
