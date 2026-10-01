@@ -9,8 +9,10 @@ KIND_IMAGE = "image"
 KIND_SIMILAR = "similar"        # advanced: near-identical content (chunking / fuzzy)
 
 
-@dataclass
+@dataclass(slots=True)
 class FileEntry:
+    # slots: no per-instance __dict__ — critical for comprehensive scans, where the walk
+    # holds one FileEntry per file and a home tree can have millions of them.
     path: str
     size: int
     mtime: float

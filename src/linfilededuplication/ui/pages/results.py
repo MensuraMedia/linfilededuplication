@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 
-from gi.repository import Adw, Gdk, GLib, Gtk
+from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
 
 from linfilededuplication.core.model import KIND_IMAGE, KIND_SIMILAR, DuplicateGroup, FileEntry
 from linfilededuplication.core.units import human_bytes
@@ -20,6 +20,8 @@ class ResultsPage(BasePage):
     title = _("Results")
     clamp_max = 0           # fill the window for the spreadsheet-like file list
     MIN_SPIN = 1.6          # keep the radar visible at least this long
+    MAX_CARDS = 400         # cap rendered group cards; a comprehensive scan can find
+                            # tens of thousands, and a widget per group would exhaust memory
 
     def build_content(self) -> None:
         self._groups: list[dict] = []       # {group, keeper, checks:[(CheckButton, FileEntry)], widget}
@@ -109,6 +111,10 @@ class ResultsPage(BasePage):
         self.scan_caption.set_visible(False)
 
     def _on_group(self, _c, group: DuplicateGroup) -> None:
+        if len(self._groups) >= self.MAX_CARDS:
+            # keep the scan running and the totals accurate (from Finished), but stop
+            # building widgets so a huge result set can't exhaust memory.
+            return
         record = {"group": group, "keeper": group.keeper, "checks": []}
         card = self._build_card(group, record)
         record["widget"] = card
@@ -126,8 +132,12 @@ class ResultsPage(BasePage):
         if not self._groups:
             self.summary.set_text(_("No duplicates found."))
             return
-        self.summary.set_text(
-            _("{g} groups · up to {b} reclaimable").format(g=fin.groups, b=human_bytes(fin.reclaimable)))
+        summary = _("{g} groups · up to {b} reclaimable").format(
+            g=fin.groups, b=human_bytes(fin.reclaimable))
+        if fin.groups > len(self._groups):      # some groups weren't rendered (card cap)
+            summary += _(" · showing the first {n} — narrow the scan to act on the rest").format(
+                n=len(self._groups))
+        self.summary.set_text(summary)
         self.action_bar.set_visible(True)
         for note in fin.notes:
             self.window.toast(note)
@@ -153,11 +163,13 @@ class ResultsPage(BasePage):
         title.add_css_class("app-group-title")
         title.set_ellipsize(3)  # PANGO_ELLIPSIZE_END
         meta = Gtk.Label(
-            label=_("{n} files · reclaim {b}").format(n=group.count, b=human_bytes(group.reclaimable)))
+            label=_("{n} files · reclaim {b}").format(n=group.count, b=human_bytes(group.reclaimable)),
+            xalign=0.0, hexpand=True)           # takes the slack so SpotCheck sits at the right
         meta.add_css_class("app-dim")
         meta.add_css_class("app-small")
         spot = Gtk.Button(label=_("SpotCheck"))
         spot.set_valign(Gtk.Align.CENTER)      # a normal raised button, not flat text
+        spot.set_halign(Gtk.Align.END)
         spot.connect("clicked", lambda _b, g=group: self.window.open_spotcheck(g, self._on_spotcheck_applied))
         header.append(meta)
         header.append(spot)
@@ -245,7 +257,10 @@ class ResultsPage(BasePage):
     def _thumb(self, f: FileEntry) -> Gtk.Widget:
         if f.is_image:
             try:
-                img = Gtk.Image.new_from_file(f.path)
+                # Decode SCALED, never full-resolution: new_from_file would hold a full
+                # bitmap per row (tens of MB each), which OOMs a large image result set.
+                pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(f.path, 48, 48, True)
+                img = Gtk.Image.new_from_pixbuf(pb)
                 img.set_pixel_size(24)
                 img.add_css_class("app-thumb")
                 return img
