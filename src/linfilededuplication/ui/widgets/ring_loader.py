@@ -39,15 +39,43 @@ class RingLoader(Gtk.DrawingArea):
         self._shown = self._target = 0.0
         self._indeterminate = True
         self._last = 0
+        self.set_opacity(1.0)
         self.set_visible(True)
         if not self._tick:
             self._tick = self.add_tick_callback(self._on_tick)
 
-    def stop(self) -> None:
-        """Snap to 100% and fade out shortly after (lets the viewer see it complete)."""
-        self._target = 1.0
+    def complete(self, on_done=None) -> None:
+        """Fill to 100%, hold a beat, fade out, then call ``on_done`` — so results are shown
+        only after the loader visibly completes and disappears."""
         self._indeterminate = False
-        GLib.timeout_add(550, lambda: (self.hide(), False)[1])
+        self._target = 1.0
+
+        def wait_full() -> bool:
+            if not self.get_visible():
+                return False
+            if self._shown >= 0.995:                 # reached 100% on screen
+                GLib.timeout_add(320, lambda: (self._fade_out(on_done), False)[1])
+                return False
+            return True
+        GLib.timeout_add(50, wait_full)
+
+    def _fade_out(self, on_done) -> None:
+        self._fade = 1.0
+
+        def step() -> bool:
+            self._fade -= 0.09
+            self.set_opacity(max(0.0, self._fade))
+            if self._fade <= 0.0:
+                self.hide()
+                self.set_opacity(1.0)                 # reset for the next scan
+                if on_done:
+                    on_done()
+                return False
+            return True
+        GLib.timeout_add(25, step)
+
+    def stop(self) -> None:
+        self.hide()
 
     def hide(self) -> None:
         self.set_visible(False)

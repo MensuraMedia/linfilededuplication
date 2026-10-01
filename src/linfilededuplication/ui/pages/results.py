@@ -1,8 +1,6 @@
 """Results: duplicate groups with previews, selection, and safe actions."""
 from __future__ import annotations
 
-import time
-
 from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
 
 from linfilededuplication.core.model import KIND_IMAGE, KIND_SIMILAR, DuplicateGroup, FileEntry
@@ -20,12 +18,12 @@ class ResultsPage(BasePage):
     page_id = "results"
     title = _("Results")
     clamp_max = 0           # fill the window for the spreadsheet-like file list
-    MIN_SPIN = 1.6          # keep the radar visible at least this long
     MAX_CARDS = 400         # cap rendered group cards; a comprehensive scan can find
                             # tens of thousands, and a widget per group would exhaust memory
 
     def build_content(self) -> None:
         self._groups: list[dict] = []       # {group, keeper, checks:[(CheckButton, FileEntry)], widget}
+        self._pending_groups: list = []     # groups buffered during a scan, rendered when it ends
 
         self.add_heading(_("Results"))
         spin_box = Gtk.Box(halign=Gtk.Align.CENTER)
@@ -117,9 +115,9 @@ class ResultsPage(BasePage):
             self.groups_box.remove(child)
             child = nxt
         self._groups.clear()
-        self.summary.set_text("")               # the radar shows scanning; no text needed
+        self._pending_groups = []
+        self.summary.set_text("")               # the loader shows progress; no text yet
         self.action_bar.set_visible(False)
-        self._scan_start = time.monotonic()
         self.savings_panel.set_visible(False)
         self.formula_card.set_visible(False)
         self.scan_root.set_text(_("Scanning {p}").format(p=_root))
@@ -132,40 +130,51 @@ class ResultsPage(BasePage):
         if detail:                              # a path (walk/hash/image) or a short phase note
             self.scan_activity.set_text(detail)
 
-    def _end_spin(self) -> None:
-        self.spinner.stop()
+    def _present_results(self, fin) -> None:
+        """Build the result cards and reveal the summary/savings — called after the loader has
+        completed to 100% and faded out."""
         self.scan_caption.set_visible(False)
-
-    def _on_group(self, _c, group: DuplicateGroup) -> None:
-        if len(self._groups) >= self.MAX_CARDS:
-            # keep the scan running and the totals accurate (from Finished), but stop
-            # building widgets so a huge result set can't exhaust memory.
-            return
-        record = {"group": group, "keeper": group.keeper, "checks": [], "ignored_files": set()}
-        card = self._build_card(group, record)
-        record["widget"] = card
-        self._groups.append(record)
-        self.groups_box.append(card)
+        for group in self._pending_groups:
+            if len(self._groups) >= self.MAX_CARDS:     # bound the widget count on huge scans
+                break
+            record = {"group": group, "keeper": group.keeper, "checks": [],
+                      "ignored_files": set()}
+            card = self._build_card(group, record)
+            record["widget"] = card
+            self._groups.append(record)
+            self.groups_box.append(card)
+        # reflect any already-ignored folders on the freshly built rows
+        self.apply_ignored_folders(list(getattr(self.app.settings, "ignored_folders", [])))
         self._refresh_selection()
 
-    def _on_finished(self, _c, fin) -> None:
-        elapsed = time.monotonic() - getattr(self, "_scan_start", 0.0)
-        remaining = self.MIN_SPIN - elapsed
-        if remaining > 0:
-            GLib.timeout_add(int(remaining * 1000), lambda: (self._end_spin(), False)[1])
-        else:
-            self._end_spin()
         if not self._groups:
-            self.summary.set_text(_("No duplicates found."))
+            self.summary.set_text(_("Scan cancelled.") if getattr(fin, "cancelled", False)
+                                  else _("No duplicates found."))
             return
         summary = _("{g} groups · up to {b} reclaimable").format(
             g=fin.groups, b=human_bytes(fin.reclaimable))
-        if fin.groups > len(self._groups):      # some groups weren't rendered (card cap)
+        if fin.groups > len(self._groups):
             summary += _(" · showing the first {n} — narrow the scan to act on the rest").format(
                 n=len(self._groups))
+        if getattr(fin, "cancelled", False):
+            summary = _("Scan cancelled · ") + summary
         self.summary.set_text(summary)
         self._show_savings(fin)
         self.action_bar.set_visible(True)
+
+    def _on_group(self, _c, group: DuplicateGroup) -> None:
+        # Buffer during the scan; cards are built only after the loader reaches 100% and fades,
+        # so results are not shown half-formed while the percentage is still climbing.
+        self._pending_groups.append(group)
+
+    def _on_finished(self, _c, fin) -> None:
+        if getattr(fin, "cancelled", False):
+            self.spinner.hide()
+            self.scan_caption.set_visible(False)
+            self._present_results(fin)
+        else:
+            # fill the ring to 100%, fade it out, THEN show the results
+            self.spinner.complete(lambda: self._present_results(fin))
 
     def _build_formula_card(self) -> Gtk.Widget:
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
