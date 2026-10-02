@@ -1,6 +1,6 @@
 # License
 
-**LinFileDedup (`linfilededuplication`)** is released under the
+**LinFileDedup** (`linfilededuplication`) is released under the
 **Creative Commons Attribution–NonCommercial 4.0 International License (CC BY‑NC 4.0)**.
 
 Copyright © 2026 MensuraMedia. All rights reserved except as granted below.
@@ -64,6 +64,5 @@ SPDX-License-Identifier: CC-BY-NC-4.0
 
 To the extent permitted by law, the software is provided **“as is”**, without warranty of any
 kind, express or implied. The authors are not liable for any claim, damages, or other liability
-arising from its use. Because LinFileDedup can move files to Trash or replace them with hard
-links, please keep your own backups and make use of the review step and confirmations before
-acting — they are there to protect your data.
+arising from its use. Because software can modify, move, or remove data on your system, please
+keep your own backups and review what an action will do before confirming it.
