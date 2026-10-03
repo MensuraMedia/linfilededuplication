@@ -454,8 +454,9 @@ class ScanPage(BasePage):
         path.add_css_class("app-mono")
         path.add_css_class("app-small")
         path.set_ellipsize(2)                       # middle-ellipsize only if it overflows
-        name = Gtk.Label(label="", xalign=0.0)
-        name.add_css_class("app-group-title")
+        name = Gtk.Label(label="", xalign=0.0)   # same font/size as the path; extension in orange
+        name.add_css_class("app-mono")
+        name.add_css_class("app-small")
         name.set_ellipsize(3)
         bar = Gtk.ProgressBar()
         bar.add_css_class("app-activity")
@@ -505,6 +506,14 @@ class ScanPage(BasePage):
             bar.pulse()
         return True
 
+    def _name_markup(self, basename: str) -> str:
+        """The file name with its extension coloured orange (same font/size as the path)."""
+        stem, ext = os.path.splitext(basename)
+        stem_esc = GLib.markup_escape_text(stem)
+        if ext:
+            return f"{stem_esc}<span foreground=\"#ff9e2c\">{GLib.markup_escape_text(ext)}</span>"
+        return GLib.markup_escape_text(basename)
+
     def _on_progress(self, _c, fraction: float, phase: str, detail: str, source: str) -> None:
         if not source:                     # overall progress is shown on Results; rows are per-source
             return
@@ -518,7 +527,7 @@ class ScanPage(BasePage):
             path.set_text(detail)
             base = os.path.basename(detail)
             if base:
-                name.set_text(base)
+                name.set_markup(self._name_markup(base))
             elif phase != "walk":
                 name.set_text(_("Analyzing…"))
 
