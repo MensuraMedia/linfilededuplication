@@ -193,6 +193,11 @@ label mapped to one or more extensions (e.g. JPG → `.jpg`/`.jpeg`, RAW → `.c
   comma/space separated (e.g. `.bak, .csv, .txt, .idx`; a leading dot is optional). These are
   **added to** the checked types (`settings.custom_extensions`). Empty → just the selections; with
   All Files ticked everything is scanned regardless.
+- **"Exclusion"** (free-text + one-tap large-type boxes, with an InfoHint) — extensions to **skip
+  entirely**, which **take precedence** over the include selection. Tick common large types (VDI,
+  VMDK, VHD, QCOW2, ISO, IMG, BIN, DMG) or type your own (`settings.exclude_extensions` +
+  `settings.exclude_large` → `ScanOptions.exclude_types`; `walk()` drops matching files). Ideal for
+  keeping multi-GB disk images out of a scan so it finishes fast.
 - **Semantics:** the selection becomes `ScanOptions.file_types` (a list of extensions); the walk
   keeps only matching files. An empty list = no filter = scan everything. The chosen set persists
   in Settings between runs.

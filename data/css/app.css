@@ -64,7 +64,11 @@
 .app-thumb { border-radius: 7px; }
 .app-savings { padding: 16px 18px; }
 .app-savings-head { font-size: 1.7rem; font-weight: 800; }
-.app-cat-all { font-weight: 700; }
+.app-cat-all { font-weight: 600; }
+/* file-type picker: lighter, slightly smaller checkboxes */
+.app-filetypes checkbutton { min-height: 0; }
+.app-filetypes checkbutton > label { font-size: 0.92rem; }
+.app-filetypes checkbutton check { min-width: 15px; min-height: 15px; -gtk-icon-size: 13px; }
 .app-rule-num { background-color: alpha(@accent_bg_color, 0.22); color: @accent_color;
   border-radius: 11px; font-weight: 700; font-size: 0.82rem; }
 .app-chip-ok { background-color: alpha(@success_color, 0.22); color: @success_color;

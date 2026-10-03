@@ -53,6 +53,7 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
     out: list[FileEntry] = []
     matcher = exclusions.compile(opts.exclusions, opts.exclude)
     type_filter = {e.lower() for e in opts.file_types}   # empty = keep all types
+    exclude_types = {e.lower() for e in opts.exclude_types}   # extensions to skip (e.g. .vdi, .iso)
     ignored = set(opts.ignore_paths)                     # files the user chose to ignore
     ignored_dirs = set(opts.ignore_dirs)                 # folders to skip entirely (+ contents)
     roots = opts.all_roots()
@@ -97,6 +98,8 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
                                 if st.st_size < opts.min_size:
                                     continue
                                 ext = os.path.splitext(name)[1].lower()
+                                if ext in exclude_types:
+                                    continue             # excluded type (e.g. large .vdi/.iso)
                                 if type_filter and ext not in type_filter:
                                     continue             # file-type filter active, ext not wanted
                                 if de.path in ignored:

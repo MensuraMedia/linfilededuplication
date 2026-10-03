@@ -194,6 +194,9 @@ half-formed.
 - **File-type filter** — columns of popular types (**Images / Video / Music / Documents**), each
   with a tri-state **All**, plus a master **All Files**, and a free-text **Enter Extension** field
   for anything else (e.g. `.bak, .csv, .idx`) that's *added* to your selections.
+- **Exclusion** — a free-text field plus one-tap checkboxes for common **large types** (VDI, VMDK,
+  VHD, QCOW2, ISO, IMG, BIN, DMG) to **skip entirely** — ideal for keeping multi-GB disk images out
+  of a scan. Exclusions take precedence over the include selection.
 - **Scan scope (exclusions)** — presets that skip files an app or the OS can recreate (**system
   files, caches, package/build artifacts, version-control internals, Trash**) plus custom globs.
   Excluded paths are never scanned and never removable.

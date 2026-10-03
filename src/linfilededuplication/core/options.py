@@ -26,6 +26,7 @@ class ScanOptions:
     exclusions: list[str] = field(default_factory=list)   # exclusion preset keys
     exclude: list[str] = field(default_factory=list)      # custom glob patterns
     file_types: list[str] = field(default_factory=list)   # extensions to include; [] = all
+    exclude_types: list[str] = field(default_factory=list)  # extensions to exclude from the scan
     ignore_paths: list[str] = field(default_factory=list)  # exact files to skip (user "Ignore")
     ignore_dirs: list[str] = field(default_factory=list)   # folders to skip entirely (+ contents)
     # Advanced-tier signals:

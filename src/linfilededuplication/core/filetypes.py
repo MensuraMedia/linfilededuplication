@@ -52,6 +52,19 @@ CATEGORIES: list[dict] = [
 ]
 
 
+# Commonly-large file types offered as one-tap exclusions (disk images, binaries, …).
+LARGE_TYPES: list[dict] = [
+    {"label": "VDI", "exts": [".vdi"]},
+    {"label": "VMDK", "exts": [".vmdk"]},
+    {"label": "VHD", "exts": [".vhd", ".vhdx"]},
+    {"label": "QCOW2", "exts": [".qcow2", ".qcow"]},
+    {"label": "ISO", "exts": [".iso"]},
+    {"label": "IMG", "exts": [".img"]},
+    {"label": "BIN", "exts": [".bin"]},
+    {"label": "DMG", "exts": [".dmg"]},
+]
+
+
 def all_extensions() -> set[str]:
     """Every extension known to the categories (lowercase, with the leading dot)."""
     out: set[str] = set()

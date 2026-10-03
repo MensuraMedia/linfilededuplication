@@ -69,3 +69,17 @@ def test_walk_skips_ignored_folder_and_contents(tmp_path):
     opts = ScanOptions(root=str(tmp_path), min_size=1, ignore_dirs=[str(sub)])
     names = {e.name for e in walk(opts)}
     assert names == {"keep.dat"}            # the ignored folder and all its files are skipped
+
+
+def test_walk_excludes_excluded_extensions(tmp_path):
+    (tmp_path / "a.jpg").write_bytes(b"x" * 4000)
+    (tmp_path / "big.vdi").write_bytes(b"y" * 4000)
+    (tmp_path / "disk.iso").write_bytes(b"z" * 4000)
+    opts = ScanOptions(root=str(tmp_path), min_size=1, exclude_types=[".vdi", ".iso"])
+    names = {e.name for e in walk(opts)}
+    assert names == {"a.jpg"}            # excluded large types are skipped
+
+
+def test_large_types_defined():
+    labels = {t["label"] for t in filetypes.LARGE_TYPES}
+    assert {"VDI", "ISO", "BIN"} <= labels

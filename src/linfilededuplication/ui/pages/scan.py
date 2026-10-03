@@ -111,6 +111,7 @@ class ScanPage(BasePage):
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         card.add_css_class("app-card")
         card.add_css_class("app-savings")              # reuse the comfortable card padding
+        card.add_css_class("app-filetypes")            # lighter, slightly smaller checkboxes
         title = Gtk.Label(label=_("File types to scan"), xalign=0.0)
         title.add_css_class("app-group-title")
         hint = Gtk.Label(xalign=0.0, wrap=True, label=_(
@@ -151,7 +152,57 @@ class ScanPage(BasePage):
             flow.append(self._category_column(cat, saved_set))
         card.append(flow)
         self._recompute_master_states()                # set the All / All Files states
+        card.append(self._exclude_section())
         return card
+
+    def _exclude_section(self) -> Gtk.Widget:
+        """Exclude extensions from the scan — a free-text field plus one-tap large-type boxes."""
+        s = self.app.settings
+        self._exclude_checks: dict[Gtk.CheckButton, list[str]] = {}
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.set_margin_top(14)
+        sep = Gtk.Separator()
+        sep.set_margin_bottom(8)
+        box.append(sep)
+
+        row = Gtk.Box(spacing=8)
+        lbl = Gtk.Label(label=_("Exclusion"))
+        lbl.add_css_class("app-small")
+        self._exclude_entry = Gtk.Entry(hexpand=True)
+        self._exclude_entry.set_placeholder_text(".vdi, .iso, .img, .bin")
+        self._exclude_entry.set_text(getattr(s, "exclude_extensions", ""))
+        row.append(lbl)
+        row.append(self._exclude_entry)
+        row.append(InfoHint(self.window, "exclude-extensions"))
+        box.append(row)
+
+        hint = Gtk.Label(xalign=0.0, wrap=True, label=_(
+            "Skip these extensions entirely — handy for large disk images you never want to scan."))
+        hint.add_css_class("app-dim")
+        hint.add_css_class("app-small")
+        box.append(hint)
+
+        flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, min_children_per_line=2,
+                           max_children_per_line=8, column_spacing=16, row_spacing=4)
+        saved_large = set(getattr(s, "exclude_large", []))
+        for t in filetypes.LARGE_TYPES:
+            cb = Gtk.CheckButton(label=t["label"])
+            cb.set_active(t["label"] in saved_large)
+            self._exclude_checks[cb] = t["exts"]
+            flow.append(cb)
+        box.append(flow)
+        return box
+
+    def _selected_exclude_types(self) -> list[str]:
+        """Extensions to exclude: the checked large types plus the free-text field."""
+        import re
+        exts: list[str] = []
+        for cb, cb_exts in self._exclude_checks.items():
+            if cb.get_active():
+                exts += cb_exts
+        text = self._exclude_entry.get_text() if hasattr(self, "_exclude_entry") else ""
+        exts += [p for p in re.split(r"[,\s]+", text.strip()) if p]
+        return filetypes.normalize(exts)
 
     def _category_column(self, cat: dict, saved_set: set[str]) -> Gtk.Widget:
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -417,6 +468,7 @@ class ScanPage(BasePage):
             exclusions=list(s.exclusions),
             exclude=list(getattr(s, "custom_excludes", [])),
             file_types=self._selected_file_types(),
+            exclude_types=self._selected_exclude_types(),
             ignore_paths=list(getattr(s, "ignored_paths", [])),
             ignore_dirs=list(getattr(s, "ignored_folders", [])),
             advanced_similar=(self.tier == TIER_ADVANCED),
@@ -444,6 +496,8 @@ class ScanPage(BasePage):
         s.min_size_mb = max(1, int(self.min_row.get_value()))
         s.file_types = self._selected_file_types()
         s.custom_extensions = self._ext_entry.get_text().strip()
+        s.exclude_extensions = self._exclude_entry.get_text().strip()
+        s.exclude_large = [cb.get_label() for cb in self._exclude_checks if cb.get_active()]
         s.save()
         self.window.start_scan(self._options())
 
