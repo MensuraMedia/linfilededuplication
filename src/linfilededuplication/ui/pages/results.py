@@ -125,14 +125,17 @@ class ResultsPage(BasePage):
         self.scan_caption.set_visible(True)
         self.spinner.start()
 
-    def _on_progress(self, _c, fraction: float, phase: str, detail: str) -> None:
-        self.spinner.set_progress(fraction, phase)   # accurate % from files processed
+    def _on_progress(self, _c, fraction: float, phase: str, detail: str, source: str) -> None:
+        if source:                              # per-source events drive the Scan page rings only
+            return
+        self.spinner.set_progress(fraction, phase)   # overall accurate % from files processed
         if detail:                              # a path (walk/hash/image) or a short phase note
             self.scan_activity.set_text(detail)
 
     def _present_results(self, fin) -> None:
         """Build the result cards and reveal the summary/savings — called after the loader has
         completed to 100% and faded out."""
+        self._last_fin = fin                    # remembered for History entries
         self.scan_caption.set_visible(False)
         for group in self._pending_groups:
             if len(self._groups) >= self.MAX_CARDS:     # bound the widget count on huge scans
@@ -168,13 +171,12 @@ class ResultsPage(BasePage):
         self._pending_groups.append(group)
 
     def _on_finished(self, _c, fin) -> None:
-        if getattr(fin, "cancelled", False):
-            self.spinner.hide()
-            self.scan_caption.set_visible(False)
-            self._present_results(fin)
-        else:
-            # fill the ring to 100%, fade it out, THEN show the results
-            self.spinner.complete(lambda: self._present_results(fin))
+        # the Scan page owns the live progress (per-source rings) and transitions here when done,
+        # so Results presents immediately; its overall ring is only seen if the user sits on this
+        # page during a scan.
+        self.spinner.hide()
+        self.scan_caption.set_visible(False)
+        self._present_results(fin)
 
     def _build_formula_card(self) -> Gtk.Widget:
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -585,10 +587,30 @@ class ResultsPage(BasePage):
         sw.set_child(box)
         return sw
 
+    def _invalidate_cache(self, paths: list[str]) -> None:
+        """Drop removed/relinked files from the hash cache so the next scan stays truthful."""
+        try:
+            from linfilededuplication.core.hashcache import HashCache
+            HashCache().remove(paths)
+        except Exception:
+            pass
+
+    def _record_history(self, action: str, done: int, freed: int, errors: list[str]) -> None:
+        from linfilededuplication.config.history import HistoryEntry, HistoryStore
+        fin = getattr(self, "_last_fin", None)
+        HistoryStore().add(HistoryEntry(
+            sources=list(getattr(self.window, "last_scan_roots", [])),
+            action=action, ok=(done > 0), error=(errors[0] if errors else ""),
+            before_bytes=(fin.occupied_bytes if fin else 0),
+            freed_bytes=freed, files_removed=done,
+            groups=(fin.groups if fin else 0)))
+
     def _do_trash(self, dialog, result, sel) -> None:
         if dialog.choose_finish(result) != "ok":
             return
         res = actions.move_to_trash([f for _r, f in sel])
+        self._invalidate_cache([f.path for _r, f in sel])
+        self._record_history("trash", res.done, res.freed, res.errors)
         self._apply_removed(sel)
         self.window.toast(_("Moved {n} files to Trash · {b} reclaimed").format(
             n=res.done, b=human_bytes(res.freed)))
@@ -623,6 +645,8 @@ class ResultsPage(BasePage):
         linked = {id(f) for gid, extras in by_group.items() if keepers[gid] is not None
                   for f in extras}
         self._remove_by_ids(linked)
+        self._invalidate_cache([f.path for _r, f in sel])
+        self._record_history("hardlink", done, freed, errors)
         self.window.toast(_("Hard-linked {n} files · {b} reclaimed").format(n=done, b=human_bytes(freed)))
         if skipped_delete_all:
             self.window.toast(_("Groups set to “Delete all copies” were skipped — use Move to Trash."))

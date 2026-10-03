@@ -1,13 +1,18 @@
 """Scan: choose a folder and tier, set options, run, watch progress."""
 from __future__ import annotations
 
-from gi.repository import Adw, Gtk
+import os
+
+from gi.repository import Adw, GLib, Gtk
 
 from linfilededuplication.core import filetypes
 from linfilededuplication.core.options import TIER_ADVANCED, TIER_SIMPLE, ScanOptions
+from linfilededuplication.core.units import human_bytes
 from linfilededuplication.i18n import _
 from linfilededuplication.ui.pages.base import BasePage
+from linfilededuplication.ui.widgets.common import icon
 from linfilededuplication.ui.widgets.info_hint import InfoHint
+from linfilededuplication.ui.widgets.ring_loader import RingLoader
 
 
 class ScanPage(BasePage):
@@ -43,41 +48,45 @@ class ScanPage(BasePage):
         toprow.append(self.run_btn)
         self.add(toprow)
 
-        # folder + options
-        grp = Adw.PreferencesGroup()
-        self.folder_row = Adw.ActionRow(title=_("Folder to scan"),
-                                        subtitle=self.root or _("No folder chosen"))
-        choose = Gtk.Button(label=_("Choose…"), valign=Gtk.Align.CENTER)
-        choose.connect("clicked", self._choose_folder)
-        self.folder_row.add_suffix(choose)
-        grp.add(self.folder_row)
+        # effective sources: saved multi-source list, else the last single folder
+        self.sources = [r for r in (list(getattr(s, "roots", [])) or
+                                     ([s.last_root] if s.last_root else [])) if r]
 
+        # config box (sources + options + file types) — hidden while a scan runs
+        self.config_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        self.config_box.append(self._sources_section())
+
+        grp = Adw.PreferencesGroup()
         self.sw_images = Adw.SwitchRow(title=_("Find image near-duplicates"),
                                        subtitle=_("Perceptual hash, within the similarity threshold"))
         self.sw_images.set_active(s.find_images)
         self.sw_images.add_prefix(InfoHint(self.window, "near-duplicate"))
         grp.add(self.sw_images)
-
         self.sw_hidden = Adw.SwitchRow(title=_("Include hidden files"),
                                        subtitle=_("Dotfiles and dot-folders"))
         self.sw_hidden.set_active(s.include_hidden)
         grp.add(self.sw_hidden)
-
         self.min_row = Adw.SpinRow.new_with_range(0, 1024, 1)
         self.min_row.set_title(_("Minimum file size (MB)"))
         self.min_row.set_value(s.min_size_mb)
         self.min_row.add_prefix(InfoHint(self.window, "min-size"))
         grp.add(self.min_row)
-        self.add(grp)
+        self.config_box.append(grp)
+        self.config_box.append(self._filetypes_section(list(getattr(s, "file_types", []))))
+        self.add(self.config_box)
 
-        # file-type filter (columns of popular types, each with an "All")
-        self.add(self._filetypes_section(list(getattr(s, "file_types", []))))
+        # scanning view: a percentage ring per source (hidden until a scan runs)
+        self.scanning_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.scan_title = Gtk.Label(xalign=0.0)
+        self.scan_title.add_css_class("app-page-title")
+        self.rings_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.scanning_box.append(self.scan_title)
+        self.scanning_box.append(self.rings_list)
+        self.scanning_box.set_visible(False)
+        self.add(self.scanning_box)
+        self._rings: dict = {}
+        self._pulse_timer: int = 0
 
-        # progress (the Start scan button is on the top row with the tier toggle)
-        self.progress = Gtk.ProgressBar()
-        self.progress.add_css_class("app-progress")
-        self.progress.set_visible(False)
-        self.add(self.progress)
         self.status = Gtk.Label(label="", xalign=0.0)
         self.status.add_css_class("app-dim")
         self.status.add_css_class("app-small")
@@ -228,33 +237,177 @@ class ScanPage(BasePage):
         merged = filetypes.normalize(selected + self._custom_extensions())
         return merged if merged else []                # none selected + none custom -> all
 
-    # --- controls --------------------------------------------------------
-    def _on_tier(self, btn: Gtk.ToggleButton) -> None:
-        if btn.get_active():
-            self.tier = TIER_SIMPLE if btn is self.btn_simple else TIER_ADVANCED
+    # --- sources ---------------------------------------------------------
+    def _sources_section(self) -> Gtk.Widget:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.add_css_class("app-card")
+        card.add_css_class("app-savings")
+        title = Gtk.Label(label=_("Sources to scan"), xalign=0.0)
+        title.add_css_class("app-group-title")
+        hint = Gtk.Label(xalign=0.0, wrap=True, label=_(
+            "Duplicates are found across every source — a copy on a backup drive and the original "
+            "on your disk form one group. The copy on the first-listed (primary) source is kept."))
+        hint.add_css_class("app-dim")
+        hint.add_css_class("app-small")
+        card.append(title)
+        card.append(hint)
+        self.sources_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        card.append(self.sources_list)
+        addrow = Gtk.Box(spacing=8)
+        addrow.set_margin_top(10)
+        add_src = Gtk.Button(label=_("＋ Add source…"))
+        add_src.connect("clicked", self._add_source_dialog)
+        add_drv = Gtk.Button(label=_("Add drive…"))
+        add_drv.connect("clicked", self._add_drive_menu)
+        addrow.append(add_src)
+        addrow.append(add_drv)
+        card.append(addrow)
+        self._rebuild_sources()
+        return card
 
-    def _choose_folder(self, _btn) -> None:
-        dialog = Gtk.FileDialog(title=_("Choose a folder to scan"))
-        dialog.select_folder(self.window, None, self._folder_chosen)
+    def _rebuild_sources(self) -> None:
+        box = self.sources_list
+        child = box.get_first_child()
+        while child is not None:
+            nxt = child.get_next_sibling()
+            box.remove(child)
+            child = nxt
+        if not self.sources:
+            empty = Gtk.Label(xalign=0.0, label=_("No sources yet — add a folder or a drive."))
+            empty.add_css_class("app-dim")
+            empty.add_css_class("app-small")
+            empty.set_margin_top(6)
+            box.append(empty)
+            return
+        for i, src in enumerate(self.sources):
+            box.append(self._source_row(src, primary=(i == 0)))
 
-    def _folder_chosen(self, dialog, result) -> None:
+    def _source_row(self, path: str, primary: bool) -> Gtk.Widget:
+        row = Gtk.Box(spacing=12)
+        row.add_css_class("app-source-row")
+        ic = icon("app-stat-space-symbolic", 18)
+        ic.add_css_class("app-dim")
+        nm = Gtk.Label(label=path, xalign=0.0, hexpand=True)
+        nm.add_css_class("app-mono")
+        nm.add_css_class("app-small")
+        nm.set_ellipsize(2)
+        meta = Gtk.Label(label=self._source_meta(path, primary))
+        meta.add_css_class("app-dim")
+        meta.add_css_class("app-small")
+        rm = Gtk.Button(label=_("Remove"))
+        rm.add_css_class("flat")
+        rm.set_valign(Gtk.Align.CENTER)
+        rm.connect("clicked", lambda _b, p=path: self._remove_source(p))
+        row.append(ic)
+        row.append(nm)
+        row.append(meta)
+        row.append(rm)
+        return row
+
+    def _source_meta(self, path: str, primary: bool) -> str:
+        import shutil
+        parts = [_("primary")] if primary else []
+        try:
+            parts.append(human_bytes(shutil.disk_usage(path).total))
+        except Exception:
+            pass
+        return " · ".join(parts)
+
+    def _add_source(self, path: str) -> None:
+        if not path:
+            return
+        p = path.rstrip("/") or "/"
+        if p not in [s.rstrip("/") for s in self.sources]:
+            self.sources.append(p)
+            self._rebuild_sources()
+
+    def _remove_source(self, path: str) -> None:
+        self.sources = [s for s in self.sources if s.rstrip("/") != path.rstrip("/")]
+        self._rebuild_sources()
+
+    def _add_source_dialog(self, _btn) -> None:
+        dialog = Gtk.FileDialog(title=_("Add a folder to scan"))
+        dialog.select_folder(self.window, None, self._source_chosen)
+
+    def _source_chosen(self, dialog, result) -> None:
         try:
             folder = dialog.select_folder_finish(result)
         except Exception:
             return
         if folder is not None:
-            self.root = folder.get_path()
-            self.folder_row.set_subtitle(self.root)
+            self._add_source(folder.get_path())
+
+    def _detect_mounts(self) -> list:
+        out: list = []
+        seen: set = set()
+
+        def add(label: str, path: str) -> None:
+            p = (path or "").rstrip("/")
+            if p and p not in seen:
+                seen.add(p)
+                out.append((label, p))
+
+        try:
+            from gi.repository import Gio
+            for m in Gio.VolumeMonitor.get().get_mounts():
+                r = m.get_root()
+                p = r.get_path() if r is not None else None
+                if p:
+                    add(m.get_name() or os.path.basename(p) or p, p)
+        except Exception:
+            pass
+        from pathlib import Path
+        add(_("Home"), str(Path.home()))
+        return out
+
+    def _add_drive_menu(self, btn) -> None:
+        pop = Gtk.Popover()
+        pop.set_parent(btn)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        box.set_margin_top(4)
+        box.set_margin_bottom(4)
+        box.set_margin_start(4)
+        box.set_margin_end(4)
+        have = {s.rstrip("/") for s in self.sources}
+        added = 0
+        for label, path in self._detect_mounts():
+            if path in have:
+                continue
+            b = Gtk.Button()
+            b.add_css_class("flat")
+            lbl = Gtk.Label(label=f"{label}  —  {path}", xalign=0.0)
+            lbl.add_css_class("app-small")
+            b.set_child(lbl)
+            b.connect("clicked", lambda _b, p=path: (self._add_source(p), pop.popdown()))
+            box.append(b)
+            added += 1
+        if not added:
+            none = Gtk.Label(label=_("No other drives detected."), xalign=0.0)
+            none.add_css_class("app-dim")
+            none.add_css_class("app-small")
+            none.set_margin_start(6)
+            none.set_margin_end(6)
+            box.append(none)
+        pop.set_child(box)
+        pop.connect("closed", lambda p: p.unparent())
+        pop.popup()
+
+    # --- controls --------------------------------------------------------
+    def _on_tier(self, btn: Gtk.ToggleButton) -> None:
+        if btn.get_active():
+            self.tier = TIER_SIMPLE if btn is self.btn_simple else TIER_ADVANCED
 
     def _options(self) -> ScanOptions:
         s = self.app.settings
         return ScanOptions(
-            root=self.root,
+            roots=list(self.sources),
+            root=self.sources[0] if self.sources else "",
             tier=self.tier,
             find_images=self.sw_images.get_active(),
             include_hidden=self.sw_hidden.get_active(),
             min_size=max(1, int(self.min_row.get_value()) * 1_000_000),
             hamming=s.hamming,
+            use_hash_cache=getattr(s, "use_hash_cache", True),
             detect_backups=s.detect_backups,
             keep_newest_backup=s.keep_newest_backup,
             exclusions=list(s.exclusions),
@@ -270,13 +423,14 @@ class ScanPage(BasePage):
         if self.window.controller.running:
             self.window.controller.cancel()
             return
-        if not self.root:
-            self.window.toast(_("Choose a folder to scan first."))
-            self._choose_folder(None)
+        if not self.sources:
+            self.window.toast(_("Add at least one source to scan."))
+            self._add_source_dialog(None)
             return
-        # persist choices
         s = self.app.settings
-        s.tier, s.last_root = self.tier, self.root
+        s.tier = self.tier
+        s.roots = list(self.sources)
+        s.last_root = self.sources[0]
         s.find_images = self.sw_images.get_active()
         s.include_hidden = self.sw_hidden.get_active()
         s.min_size_mb = max(1, int(self.min_row.get_value()))
@@ -285,30 +439,133 @@ class ScanPage(BasePage):
         s.save()
         self.window.start_scan(self._options())
 
-    # --- controller signals ---------------------------------------------
+    # --- controller signals: per-source ring rows -----------------------
+    def _scan_row(self, src: str):
+        """One list row: ring (left) + full path / file name / per-file activity bar / note."""
+        row = Gtk.Box(spacing=16)
+        row.add_css_class("app-ring-card")
+        ring = RingLoader(84)
+        ring.set_valign(Gtk.Align.CENTER)
+        row.append(ring)
+
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
+        col.set_valign(Gtk.Align.CENTER)
+        path = Gtk.Label(label=src, xalign=0.0)
+        path.add_css_class("app-mono")
+        path.add_css_class("app-small")
+        path.set_ellipsize(2)                       # middle-ellipsize only if it overflows
+        name = Gtk.Label(label="", xalign=0.0)
+        name.add_css_class("app-group-title")
+        name.set_ellipsize(3)
+        bar = Gtk.ProgressBar()
+        bar.add_css_class("app-activity")
+        bar.set_hexpand(False)                      # half width, left-aligned
+        bar.set_halign(Gtk.Align.START)
+        bar.set_size_request(360, -1)
+        bar.set_margin_top(6)
+        bar.set_margin_bottom(3)
+        note = Gtk.Label(xalign=0.0, label=_("Note: large files may take several minutes to scan…"))
+        note.add_css_class("app-dim")
+        note.add_css_class("app-small")
+        col.append(path)
+        col.append(name)
+        col.append(bar)
+        col.append(note)
+        row.append(col)
+        return row, ring, path, name, bar
+
     def _on_started(self, _c, root: str) -> None:
         self.run_btn.set_label(_("Stop"))
         self.run_btn.remove_css_class("suggested-action")
         self.run_btn.add_css_class("destructive-action")
-        self.progress.set_visible(True)
-        self.progress.set_fraction(0.0)
-        self.status.set_text(_("Scanning {root}…").format(root=root))
+        self.status.set_text("")
+        box = self.rings_list
+        child = box.get_first_child()
+        while child is not None:
+            nxt = child.get_next_sibling()
+            box.remove(child)
+            child = nxt
+        self._rings = {}
+        srcs = self.sources or [root]
+        self.scan_title.set_text(_("Scanning {n} source{p}…").format(
+            n=len(srcs), p="" if len(srcs) == 1 else "s"))
+        for src in srcs:
+            row, ring, path, name, bar = self._scan_row(src)
+            ring.start()
+            name.set_text(_("Queued"))
+            self._rings[src.rstrip("/")] = (ring, path, name, bar)
+            box.append(row)
+        self.config_box.set_visible(False)
+        self.scanning_box.set_visible(True)
+        if not self._pulse_timer:               # steady fallback pulse so bars never look frozen
+            self._pulse_timer = GLib.timeout_add(250, self._pulse_bars)
 
-    def _on_progress(self, _c, fraction: float, phase: str, detail: str) -> None:
-        self.progress.set_fraction(min(1.0, max(0.0, fraction)))
+    def _pulse_bars(self) -> bool:
+        for _ring, _path, _name, bar in self._rings.values():
+            bar.pulse()
+        return True
+
+    def _on_progress(self, _c, fraction: float, phase: str, detail: str, source: str) -> None:
+        if not source:                     # overall progress is shown on Results; rows are per-source
+            return
+        entry = self._rings.get(source.rstrip("/"))
+        if entry is None:
+            return
+        ring, path, name, bar = entry
+        ring.set_progress(fraction, phase)
+        bar.pulse()                         # a file event: quick motion for small files
         if detail:
-            self.status.set_text(detail)
+            path.set_text(detail)
+            base = os.path.basename(detail)
+            if base:
+                name.set_text(base)
+            elif phase != "walk":
+                name.set_text(_("Analyzing…"))
+
+    def _stop_pulse(self) -> None:
+        if self._pulse_timer:
+            GLib.source_remove(self._pulse_timer)
+            self._pulse_timer = 0
 
     def _on_finished(self, _c, fin) -> None:
         self.run_btn.set_label(_("Start scan"))
         self.run_btn.remove_css_class("destructive-action")
         self.run_btn.add_css_class("suggested-action")
-        self.progress.set_visible(False)
+        self._stop_pulse()
         if fin.cancelled:
             self.status.set_text(_("Scan cancelled."))
-        else:
-            self.status.set_text(
-                _("Found {g} groups · {n} files scanned").format(g=fin.groups, n=fin.files_scanned))
+            self._restore_after_scan(go_results=False)
+            return
+        # Keep EVERY ring visible until the whole scan is done: settle each at 100%, mark the row
+        # Done, then — after a brief hold — fade them ALL together and reveal the results.
+        for ring, path, name, bar in self._rings.values():
+            ring.set_progress(1.0, "done")
+            name.set_text(_("Done"))
+            bar.set_fraction(1.0)
+        GLib.timeout_add(650, lambda: (self._fade_rings_and_show(), False)[1])
+
+    def _fade_rings_and_show(self) -> None:
+        box = self.scanning_box
+        state = {"o": 1.0}
+
+        def step() -> bool:
+            state["o"] -= 0.08
+            box.set_opacity(max(0.0, state["o"]))
+            if state["o"] <= 0.0:
+                box.set_opacity(1.0)
+                self._restore_after_scan(go_results=True)
+                return False
+            return True
+        GLib.timeout_add(25, step)
+
+    def _restore_after_scan(self, go_results: bool) -> None:
+        self._stop_pulse()
+        for ring, _path, _name, _bar in self._rings.values():
+            ring.hide()
+        self.scanning_box.set_visible(False)
+        self.config_box.set_visible(True)
+        if go_results:
+            self.window.show_page("results")
 
     def _on_error(self, _c, message: str, fix: str, path: str) -> None:
         self.status.set_text(f"{message} {fix}".strip())

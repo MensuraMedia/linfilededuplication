@@ -105,15 +105,15 @@ class MainWindow(Adw.ApplicationWindow):
 
     # --- scan glue -------------------------------------------------------
     def start_scan(self, opts) -> None:
-        self.show_page("results")
+        self.last_scan_roots = opts.all_roots()     # remembered for History entries
+        self.show_page("scan")                      # stay on Scan to watch per-source rings
         self.controller.start(opts)
 
     def request_scan(self, path: str | None) -> None:
         if not path:
             return
         scan_page = self.pages["scan"]
-        scan_page.root = path
-        scan_page.folder_row.set_subtitle(path)
+        scan_page._add_source(path)
         self.show_page("scan")
 
     def toast(self, text: str) -> None:

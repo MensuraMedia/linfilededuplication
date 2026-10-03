@@ -22,7 +22,7 @@ class ScanController(GObject.GObject):
     __gtype_name__ = "LfdScanController"
     __gsignals__ = {
         "scan-started": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
-        "progress": (GObject.SignalFlags.RUN_FIRST, None, (float, str, str)),
+        "progress": (GObject.SignalFlags.RUN_FIRST, None, (float, str, str, str)),
         "group-found": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
         "scan-error": (GObject.SignalFlags.RUN_FIRST, None, (str, str, str)),
         "scan-finished": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
@@ -77,7 +77,7 @@ class ScanController(GObject.GObject):
         if isinstance(ev, events.ScanStarted):
             self.emit("scan-started", ev.root)
         elif isinstance(ev, events.Progress):
-            self.emit("progress", ev.fraction, ev.phase, ev.detail)
+            self.emit("progress", ev.fraction, ev.phase, ev.detail, ev.source)
         elif isinstance(ev, events.GroupFound):
             self.emit("group-found", ev.group)
         elif isinstance(ev, events.ScanError):

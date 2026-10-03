@@ -41,6 +41,18 @@ acting. It is a gate, not an actor: closing it changes nothing.
 
 ![SpotCheck](docs/screenshots/spotcheck.png)
 
+### Scan many sources at once
+
+Add several folders or drives and LinFileDedup treats them as **one pool** — so the copy on your
+USB backup and the original on your disk form one group (the **primary source is kept**, and
+cross-drive copies route to Trash). While scanning, a **percentage ring tracks each source
+independently**; the rings stay up until the whole scan completes, then fade together and the
+results appear.
+
+| Choose folders & drives | A percentage ring per source |
+| --- | --- |
+| ![Sources](docs/screenshots/scan.png) | ![Per-source progress](docs/screenshots/scan-multisource.png) |
+
 ### Backups, guidance, and scan scope
 
 | Probable backups in Results | Knowledge (searchable glossary + FAQ) |
@@ -57,14 +69,28 @@ acting. It is a gate, not an actor: closing it changes nothing.
 | --- | --- |
 | ![Scan](docs/screenshots/scan.png) | ![Ignored](docs/screenshots/ignored.png) |
 
-### The basics
+### History — see what you reclaimed
 
-| Overview | Live progress — a real percentage |
+Every removal is recorded. The **History** page shows the last operation prominently — date,
+sources, a **before/after bar pair**, and a bold **"You saved N GB"** — with earlier operations
+listed below (successes and failures).
+
+| Overview | History |
 | --- | --- |
-| ![Overview](docs/screenshots/overview.png) | ![Scanning](docs/screenshots/scan-ring.png) |
+| ![Overview](docs/screenshots/overview.png) | ![History](docs/screenshots/history.png) |
 
-Interactive design mockups (light and dark) live in
-[`docs/mockups/dedupedash-mockups.html`](docs/mockups/dedupedash-mockups.html).
+### Design & mockups
+
+The design is captured in living HTML mockups under [`docs/mockups/`](docs/mockups/):
+
+- [`scan-ring-list.html`](docs/mockups/scan-ring-list.html) — the per-source scan display (ring + path/file/activity bar).
+- [`multisource-scan.html`](docs/mockups/multisource-scan.html) — multi-source scanning, per-source progress, and History.
+- [`results-spotcheck-proposals.html`](docs/mockups/results-spotcheck-proposals.html) — Results & SpotCheck proposals.
+- [`dedupedash-mockups.html`](docs/mockups/dedupedash-mockups.html) — the original light/dark dashboard mockups.
+
+Technical design notes: [`docs/CONCEPT.md`](docs/CONCEPT.md),
+[`docs/CONCEPT-MULTISOURCE.md`](docs/CONCEPT-MULTISOURCE.md),
+[`docs/CONCEPT-SCAN-RINGS.md`](docs/CONCEPT-SCAN-RINGS.md).
 
 ---
 
@@ -93,6 +119,38 @@ Interactive design mockups (light and dark) live in
   most people need.
 - **Advanced Scan** — adds the content-similarity, fuzzy, and metadata passes for documents
   and binaries, plus finer control.
+
+### Scan multiple sources at once
+
+- **Several folders and drives as one pool** — add internal folders, USB backups, and external
+  drives, and LinFileDedup finds duplicates **across** them, so a copy on a backup and the
+  original on your disk form one group. Add via **Add source…** (folder chooser) or **Add
+  drive…** (detected mountpoints).
+- **Primary-source keeper** — when equal copies live on different sources, the one on the
+  **first-listed (primary)** source is kept and the copy on the backup/removable drive is removed.
+- Cross-drive **hard-link is auto-disabled** (impossible across filesystems); those route to Trash.
+
+### Fast repeat & incremental scans (hash cache)
+
+- A persistent **hash cache** remembers each hashed file's fingerprint `{dev, ino, size, mtime}`
+  with its SHA-256. On a re-scan — or when comparing against a **new source** — an unchanged file
+  is a **cache hit** and is not read again; a changed file (different size/mtime/inode) is
+  re-hashed. Scanning again, especially across sources, completes much faster.
+- The cache updates after deletions/hard-links, is capped in size, and never weakens safety — the
+  byte-for-byte verification remains the final check.
+
+### Live per-source progress
+
+- While scanning, the **Scan** page shows a **ring per source** with its true files-scanned
+  percentage, the **full path** of the current file, its **name**, and a small **activity bar**
+  (fast for small files, a slow crawl on a large file — so a multi-minute hash never looks hung).
+  All rings stay up until the whole scan completes, then fade together and the results appear.
+
+### Scan history
+
+- The **History** page records every deduplicate operation (Trash / Delete All Duplicates /
+  Hard-link), success or failure, with the date, the sources scanned, **before/after** space as
+  bars, and the **space saved**.
 
 ### Keep policy — and it's transparent
 
@@ -260,7 +318,8 @@ src/linfilededuplication/
     backup_detect.py    probable-backup signals + age ranking
     exclusions.py       scan-scope presets + custom globs
     filetypes.py        popular file-type categories for the scan filter
-    policy.py           keep/delete ranking (incl. keep-newest for backups)
+    hashcache.py        persistent hash cache for fast repeat / cross-source scans
+    policy.py           keep/delete ranking (incl. keep-newest + primary-source)
     preview.py          read-only content previews for SpotCheck
     glossary.py         load + search the local glossary/FAQ
   services/   GTK <-> core bridge

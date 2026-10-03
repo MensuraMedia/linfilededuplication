@@ -27,6 +27,7 @@ class FileEntry:
     is_newest: bool = False     # the most recent file in a backup group
     dev: int = 0                # filesystem id
     ino: int = 0                # inode; files sharing (dev, ino) are already hard-linked
+    source: str = ""            # the scan source (root) this file was found under
 
     @property
     def name(self) -> str:

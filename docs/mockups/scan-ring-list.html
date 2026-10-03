@@ -1,0 +1,118 @@
+<title>Scan Ring List</title>
+<meta name="description" content="Mockup of the LinFileDedup per-source scan display as a list: ring left, full path/filename/activity bar right.">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#1c1f24; --card:#1e2126; --card2:#24272e; --raise:#2a2e35;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.14);
+    --fg:#eef0f2; --dim:#9aa0ab; --mut:#6f7781;
+    --accent:#3584e4; --green:#2ec27e; --red:#fe3b4e; --orange:#ff9e2c;
+    --mono:"JetBrains Mono",ui-monospace,monospace; --sans:"Inter",system-ui,"Cantarell",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.5}
+  .wrap{max-width:900px;margin:0 auto;padding-block:30px;padding-inline:16px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:0 0 6px}
+  h1{font-size:26px;font-weight:800;margin:0 0 6px}
+  .sub{color:var(--dim);margin:0;font-size:15px}
+  .banner{margin-top:14px;padding:10px 14px;border:1px solid var(--line2);border-radius:10px;background:var(--card);color:var(--dim);font-size:13px}
+
+  .app{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);margin-top:22px}
+  .main{padding:18px 20px}
+  .ptitle{font-size:22px;font-weight:800;margin:0 0 14px}
+
+  .row{display:grid;grid-template-columns:96px 1fr;gap:16px;align-items:center;
+    padding:14px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card2);margin-bottom:12px}
+  .ring{width:84px;height:84px;position:relative;justify-self:center}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .pct{position:absolute;inset:0;display:grid;place-items:center;font-size:17px;font-weight:700}
+  .ring .pct small{font-size:11px;color:var(--dim);margin-left:1px}
+  .col{min-width:0}
+  .path{font-family:var(--mono);font-size:12.5px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .name{font-weight:700;font-size:14px;margin:2px 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar{height:6px;border-radius:3px;background:#15171b;border:1px solid var(--line2);overflow:hidden;position:relative}
+  .bar i{position:absolute;top:0;bottom:0;width:34%;border-radius:3px;
+    background:linear-gradient(90deg,var(--red),var(--orange))}
+  .bar.fast i{left:0;animation:scan .9s linear infinite}
+  .bar.slow i{left:0;width:26%;animation:scan 3.4s linear infinite}
+  @keyframes scan{0%{left:-34%}100%{left:100%}}
+  .note{color:var(--mut);font-size:11.5px;margin-top:7px}
+  .done .name{color:var(--green)}
+  .queued{opacity:.55}
+  .queued .ring svg circle:last-child{display:none}
+  .state{font-size:11.5px;color:var(--mut);margin-top:7px}
+  defs{display:none}
+  .cap{color:var(--mut);font-size:12px;margin-top:10px}
+  .mini{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+  svg defs linearGradient stop{}
+</style>
+
+<div class="wrap">
+  <p class="kicker">LinFileDedup · Mockup</p>
+  <h1>Scan progress as a per-source list</h1>
+  <p class="sub">A preview for review — <b>not the live app</b>. Replaces the grid of rings so full paths fit, with a per-file activity bar so large files never look hung.</p>
+  <div class="banner">Each source is a row: the <b>ring</b> (overall % for that source) on the left; on the right the <b>full path</b> being scanned, the <b>file name</b>, a small <b>activity bar</b> (fast for small files, a slow crawl on a big file — never frozen), and a reassurance note.</div>
+
+  <svg width="0" height="0"><defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fe3b4e"/><stop offset="1" stop-color="#ff9e2c"/></linearGradient>
+  </defs></svg>
+
+  <div class="app"><div class="main">
+    <p class="ptitle">Scanning 3 sources…</p>
+
+    <!-- done -->
+    <div class="row done">
+      <div class="ring">
+        <svg width="84" height="84" viewBox="0 0 84 84">
+          <circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/>
+          <circle cx="42" cy="42" r="35" fill="none" stroke="#34cd88" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="0"/>
+        </svg>
+        <div class="pct">100<small>%</small></div>
+      </div>
+      <div class="col">
+        <div class="path">/home/user/Pictures/2026_05_19/PXL_20260515_091432.jpg</div>
+        <div class="name">Done — 58,310 files scanned</div>
+        <div class="bar"><i style="background:#2bbd78;width:100%;animation:none;position:static"></i></div>
+        <div class="state">/home/user · complete</div>
+      </div>
+    </div>
+
+    <!-- active, LARGE file (slow bar) -->
+    <div class="row">
+      <div class="ring">
+        <svg width="84" height="84" viewBox="0 0 84 84">
+          <circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/>
+          <circle cx="42" cy="42" r="35" fill="none" stroke="url(#grad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="70"/>
+        </svg>
+        <div class="pct">68<small>%</small></div>
+      </div>
+      <div class="col">
+        <div class="path">/media/user/USB-BACKUP/DCIM/Camera/PXL_20260515_135337617.MP.mp4</div>
+        <div class="name">PXL_20260515_135337617.MP.mp4</div>
+        <div class="bar slow"><i></i></div>
+        <div class="note">Note: large files may take several minutes to scan…</div>
+      </div>
+    </div>
+
+    <!-- active, many small files (fast bar) -->
+    <div class="row">
+      <div class="ring">
+        <svg width="84" height="84" viewBox="0 0 84 84">
+          <circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/>
+          <circle cx="42" cy="42" r="35" fill="none" stroke="url(#grad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="180"/>
+        </svg>
+        <div class="pct">18<small>%</small></div>
+      </div>
+      <div class="col">
+        <div class="path">/mnt/photos-external/2024/thumbs/IMG_0412.jpg</div>
+        <div class="name">IMG_0412.jpg</div>
+        <div class="bar fast"><i></i></div>
+        <div class="note">Note: large files may take several minutes to scan…</div>
+      </div>
+    </div>
+
+    <p class="cap">All rings stay visible until the whole scan completes, then fade together and the Results appear.</p>
+  </div></div>
+
+  <p class="mini">Mockup only. Full design in <code>docs/CONCEPT-SCAN-RINGS.md</code>. On approval the grid of ring cards becomes this list; the ring, per-source accounting, and collective-fade behaviour are unchanged.</p>
+</div>

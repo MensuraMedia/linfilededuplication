@@ -67,6 +67,19 @@
 .app-cat-all { font-weight: 700; }
 .app-rule-num { background-color: alpha(@accent_bg_color, 0.22); color: @accent_color;
   border-radius: 11px; font-weight: 700; font-size: 0.82rem; }
+.app-chip-ok { background-color: alpha(@success_color, 0.22); color: @success_color;
+  border-radius: 999px; padding: 1px 10px; font-weight: 700; }
+.app-chip-fail { background-color: alpha(@error_color, 0.20); color: @error_color;
+  border-radius: 999px; padding: 1px 10px; font-weight: 700; }
+.app-source-row { padding: 9px 10px; border-top: 1px solid alpha(@window_fg_color, 0.08); }
+.app-source-row:first-child { border-top: 0; }
+.app-ring-card { padding: 14px; border: 1px solid alpha(@window_fg_color, 0.10);
+  border-radius: 12px; background-color: @card_bg_color; }
+.app-ring-queued { opacity: 0.55; }
+.app-activity, .app-activity trough, .app-activity progress { min-height: 2px; }
+.app-activity trough { border-radius: 2px; background-color: alpha(@window_fg_color, 0.10); }
+.app-activity progress { border-radius: 2px; background-color: @accent_bg_color;
+  background-image: linear-gradient(to right, #2f74cf, #78aeea); }
 .app-delall { font-size: 0.86rem; }
 .app-delall:checked { background-color: @error_color; color: #ffffff; }
 .app-ignore { font-size: 0.86rem; }

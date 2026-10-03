@@ -141,7 +141,8 @@ class RingLoader(Gtk.DrawingArea):
         desc.set_weight(Pango.Weight.NORMAL)
         layout.set_font_description(desc)
         layout.set_text(f"{int(round(frac * 100))} %", -1)
-        _ink, logical = layout.get_pixel_extents()
+        ink, _logical = layout.get_pixel_extents()   # ink box = the visible glyphs
         cr.set_source_rgb(*_FG)
-        cr.move_to(cx - logical.width / 2.0, cy - logical.height / 2.0)
+        # centre the glyphs themselves on (cx, cy), not the line box, so the number sits dead-centre
+        cr.move_to(cx - (ink.x + ink.width / 2.0), cy - (ink.y + ink.height / 2.0))
         PangoCairo.show_layout(cr, layout)

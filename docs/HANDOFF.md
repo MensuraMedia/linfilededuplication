@@ -76,7 +76,9 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
 | Trash / hard-link / explore | `services/actions.py` |
 | Queue drain / signals | `services/scan_controller.py` |
 | Window shell / pages registry | `ui/window.py`, `ui/pages/__init__.py` |
-| Scan page (tiers, options, **file-type filter + All Files**) | `ui/pages/scan.py` |
+| Scan page (tiers, **multi-source list**, options, file-type filter, **per-source ring rows**) | `ui/pages/scan.py` |
+| History store / page | `config/history.py`, `ui/pages/history.py` |
+| Hash cache (fast repeat / cross-source scans) | `core/hashcache.py` |
 | Results (chart, formula card, action bar, rows, Delete All, Ignore) | `ui/pages/results.py` |
 | SpotCheck (image/pdf/video players) | `ui/pages/spotcheck.py` |
 | Space-savings bars / percentage ring / info hint | `ui/widgets/space_chart.py`, `ui/widgets/ring_loader.py`, `ui/widgets/info_hint.py` |
@@ -117,15 +119,21 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
 - **Results reveal only after** the loader completes to 100% and fades (groups buffered during the
   scan, built in `_present_results`).
 - Trash confirm dialog: **scrollable, wide, non-wrapping** file list.
+- **Multi-source scanning** (`ScanOptions.roots`/`all_roots`, `walk` tags `FileEntry.source`,
+  cross-source grouping, primary-source keeper) + a Sources list on the Scan page.
+- **Per-source progress rings** as a list (ring + path/name/activity bar/note); app stays on Scan
+  during a scan, all rings stay up then fade together, then switches to Results.
+- **Scan History** (`config/history.py` + History page with before/after bars & "You saved N GB").
+- **Hash cache** (`core/hashcache.py`) for fast repeat / cross-source scans; invalidated after
+  removals.
 
 ---
 
 ## 6. Backlog / known gaps
 
-- **History page shows no runs** despite many scans — there is no durable run-history store yet;
-  scans emit `Finished` but nothing persists it. Likely fix: a small JSON run log written on
-  `scan-finished` and read by `ui/pages/history.py`. (Parked at the user's request.)
 - **Hard-link has no confirm dialog** (Trash does) — worth adding for consistency.
+- **Settings has no toggle yet** for the hash cache or the keep-primary-source behaviour (both
+  default on via `ScanOptions`); add rows if the user wants to control them.
 - **Perceptual default `hamming=8`** is reasonable but slightly loose for smooth high-res photos;
   the dual-hash guard mitigates it. Tunable in Settings if desired.
 - `.deb` could add `python3-imagehash` / GStreamer codec packs to `Recommends:` so a normal

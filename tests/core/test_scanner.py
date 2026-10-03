@@ -101,3 +101,52 @@ def test_no_duplicates(tmp_path):
     opts = ScanOptions(root=str(tmp_path), find_images=False)
     evs = _collect(opts)
     assert not [e for e in evs if isinstance(e, events.GroupFound)]
+
+
+def test_source_of_longest_prefix():
+    from linfilededuplication.core.scanner import source_of
+    roots = ["/home/user", "/home/user/Pictures", "/mnt/usb"]
+    assert source_of("/home/user/Pictures/a.jpg", roots) == "/home/user/Pictures"
+    assert source_of("/home/user/doc.txt", roots) == "/home/user"
+    assert source_of("/mnt/usb/x", roots) == "/mnt/usb"
+
+
+def test_walk_multiple_roots_tags_source_and_combines(tmp_path):
+    a = tmp_path / "srcA"; a.mkdir()
+    b = tmp_path / "srcB"; b.mkdir()
+    (a / "one.dat").write_bytes(b"x" * 3000)
+    (b / "two.dat").write_bytes(b"y" * 3000)
+    opts = ScanOptions(roots=[str(a), str(b)], min_size=1)
+    entries = walk(opts)
+    by_name = {e.name: e for e in entries}
+    assert set(by_name) == {"one.dat", "two.dat"}
+    assert by_name["one.dat"].source == str(a)
+    assert by_name["two.dat"].source == str(b)
+
+
+def test_cross_source_duplicate_is_found(tmp_path):
+    a = tmp_path / "disk"; a.mkdir()
+    b = tmp_path / "backup"; b.mkdir()
+    data = b"same photo bytes" * 500
+    (a / "photo.jpg").write_bytes(data)
+    (b / "photo.jpg").write_bytes(data)          # same content on a different "source"
+    opts = ScanOptions(roots=[str(a), str(b)], find_images=False, min_size=1)
+    groups = [e.group for e in _collect(opts) if isinstance(e, events.GroupFound)]
+    assert len(groups) == 1 and groups[0].count == 2
+    # keeper is on the primary (first-listed) source
+    keeper = groups[0].keeper
+    assert keeper.path.startswith(str(a))
+
+
+def test_per_source_progress_events_emitted(tmp_path):
+    a = tmp_path / "A"; a.mkdir(); b = tmp_path / "B"; b.mkdir()
+    data = b"dup" * 1000
+    (a / "f.dat").write_bytes(data); (b / "f.dat").write_bytes(data)
+    opts = ScanOptions(roots=[str(a), str(b)], find_images=False, min_size=1)
+    evs = _collect(opts)
+    per_source = [e for e in evs if isinstance(e, events.Progress) and e.source]
+    assert per_source, "expected per-source progress events"
+    assert {str(a), str(b)} <= {e.source for e in per_source}
+    # every source settles at 100% (done == total) by the end
+    final = {e.source: e for e in per_source if e.total and e.done == e.total}
+    assert {str(a), str(b)} <= set(final)

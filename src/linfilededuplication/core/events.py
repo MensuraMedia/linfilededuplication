@@ -27,6 +27,7 @@ class Progress(ScanEvent):
     total: int
     phase: str          # "walk" | "size" | "hash" | "verify" | "image"
     detail: str = ""
+    source: str = ""    # which scan source this progress is for ("" = overall)
 
     @property
     def fraction(self) -> float:

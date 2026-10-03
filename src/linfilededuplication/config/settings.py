@@ -22,11 +22,13 @@ class Settings:
     schema: int = SCHEMA
     style: str = "system"           # system | light | dark
     last_root: str = ""
+    roots: list[str] = field(default_factory=list)   # multi-source selection
     tier: str = "simple"
     find_images: bool = True
     include_hidden: bool = False
     min_size_mb: int = 1
     hamming: int = 8
+    use_hash_cache: bool = True       # reuse cached hashes for unchanged files (fast re-scans)
     default_action: str = "trash"   # trash | hardlink
     dry_run: bool = True
     detect_backups: bool = True
