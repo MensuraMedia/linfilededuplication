@@ -36,20 +36,25 @@ confirmation; removals go to Trash by default (recoverable); protected paths are
 
 Cheap-to-expensive, so most files are rejected before any hashing:
 
-1. **Walk** (`walk()`) — recursive `os.scandir` honouring hidden/min-size/symlink options,
-   **scan exclusions**, the **file-type filter**, and the **ignore list**. Captures each file's
-   `(size, mtime, dev, ino)`. Streams the current folder/file back as throttled `Progress`
-   events (~15/sec) for the live scan caption.
+1. **Walk** (`walk()`) — recursive `os.scandir` over **every source** in `opts.all_roots()`,
+   honouring hidden/min-size/symlink options, **scan exclusions**, the **file-type filter**, and
+   the **ignore list**. Captures each file's `(size, mtime, dev, ino)` and tags its **`source`**
+   (the root it was found under). Returns one combined list so duplicates are found *across*
+   sources. Streams the current folder/file (with its source) as throttled `Progress` events
+   (~15/sec) for the live caption and the per-source rings.
 2. **Size pre-filter** — only sizes shared by ≥2 files continue.
 3. **Progressive prefix hash** (`hashers.prefix_hash`) — cheaply splits same-size buckets
    (xxHash when available, else BLAKE2b).
-4. **Full hash** (`hashers.full_hash`, SHA-256) — confirms identical content.
+4. **Full hash** (`hashers.full_hash`, SHA-256) — confirms identical content. Consults the
+   **hash cache** first (§4b): an unchanged file reuses its stored digest instead of being read.
 5. **Byte-for-byte verify** (optional, on by default) — rules out hash coincidence.
 6. **Inode collapse** — files sharing `(dev, ino)` are one physical file (already hard-linked),
    collapsed so they are never reported and never "reappear" on the next scan.
 
-A **DuplicateGroup** holds *any number* of identical files (2, 3, 50 …), not just pairs. One is
-the **keeper** (by policy); the rest are removal candidates.
+A **DuplicateGroup** holds *any number* of identical files (2, 3, 50 …), not just pairs, and its
+members may live on **different sources**. One is the **keeper** (by policy); the rest are removal
+candidates. **Identity is content, not name:** files are judged equal by size + SHA-256 (+ byte
+verify); the filename only influences *which* copy is kept (§4).
 
 **Memory:** `FileEntry` is `__slots__`-based (no per-instance `__dict__`) because the walk holds
 one per file — millions on a home tree (~265 bytes/entry). Validated: a full `/home` scan with
@@ -101,6 +106,65 @@ decides what to keep"** card on Results:
 **Backup detection** (`core/backup_detect.py`) flags probable backups from name/date/sibling
 signals and marks each group member **Newest** or **Older**.
 
+When scanning **multiple sources** with *Keep the primary source across drives* enabled (default),
+the keeper is biased to the **first-listed (primary) source**, so the copy removed is the one on
+the backup/removable drive. Disable it in Settings to use only the policy above.
+
+---
+
+## 4b. Scan fingerprint cache — the comparison history (`core/hashcache.py`)
+
+So that a **re-scan**, or a scan that **compares against a newly-added source**, does not re-read
+files it has already fingerprinted, LinFileDedup keeps a persistent **hash cache** (a scan
+history of file fingerprints). It is enabled by default (Settings → Scanning → *Reuse hashes for
+unchanged files*).
+
+### What is recorded, and the comparison key
+
+A tolerant JSON store at `~/.local/state/com.mensuramedia.linfilededuplication/hashcache.json`,
+mapping each file's **full path** to its fingerprint and digest:
+
+```
+<absolute path>  →  { dev, ino, size, mtime, sha256 }
+```
+
+- The **key is the full path** (which includes the source root, so the same relative file on two
+  sources is tracked separately).
+- The **fingerprint** is `dev` (filesystem id), `ino` (inode), `size` (bytes) and `mtime`
+  (modification time) — the fields that cheaply reveal whether a file changed.
+- The **`sha256`** is the content digest that the dedup comparison actually uses. (Filename is
+  *not* part of identity — identity is content; the cache simply avoids recomputing that content
+  hash.)
+
+### The "is another scan/hash necessary?" logic
+
+For each file that reaches the full-hash step, `HashCache.get(file)` decides:
+
+- **No history (new file).** The path is not in the cache → **miss** → the file is **hashed now**
+  and its fingerprint + digest are **recorded** (`put`). New files and newly-added sources are
+  always scanned.
+- **Changed file.** The path is cached, but `size`/`mtime`/`dev`/`ino` **differ** from the stored
+  fingerprint → **miss** → the file is **re-hashed** and its cache entry is **updated** with the
+  new fingerprint + digest.
+- **Unchanged file.** The path is cached and `size`/`mtime`/`dev`/`ino` **all match** → **hit** →
+  the stored `sha256` is **reused** and the file is **not read again**.
+
+So the cache self-updates on every scan: unchanged files are skipped, while **new and changed
+files discovered are hashed and written back**, keeping the history current for the next
+comparison. (Validated by `tests/core/test_hashcache.py`: a second scan of unchanged files does
+zero re-hashing; a scan after editing one file and adding another re-hashes exactly those two.)
+
+### Maintenance & safety
+
+- **After a dedup operation**, the removed/relinked files are dropped from the cache
+  (`HashCache.remove`, called from the Results actions) so the history stays truthful.
+- The file is **capped** (most-recent entries kept) and only tracks files that reach the full-hash
+  step (collision candidates), so it stays small.
+- **Safety:** the cache only ever avoids recomputing a hash that would have been identical — it
+  never changes which files are judged equal, and the **byte-for-byte verification** still runs on
+  final groups. The one heuristic is `mtime`: a tool that edits a file while preserving its mtime
+  is the single case the fast path would miss, which the byte-verify still catches.
+
 ---
 
 ## 5. Scan scope controls (Scan page)
@@ -147,6 +211,14 @@ Both are managed on the **Ignored page** (§13), where any entry can be resumed.
 Per-group **Ignore Folder** button (+ InfoHint): ignores the folders the group's files live in,
 persists them to `settings.ignored_folders`, and greys the matching rows. Managed on the Ignored
 page (§13).
+
+### 5.7 Multiple sources (`ScanOptions.roots`)
+The Scan page's **Sources to scan** list replaces the single folder: add folders with **Add
+source…** (chooser) or drives with **Add drive…** (detected mountpoints via `Gio.VolumeMonitor`),
+each shown with its type/size and a **Remove**. All sources are scanned as **one pool**, so a copy
+on a backup drive and the original on your disk form one group. The selection persists in
+`settings.roots`; `all_roots()` is the effective list (`roots` wins, else the legacy `root`).
+Cross-filesystem **hard-link is impossible**, so those groups route to Trash automatically.
 
 ---
 
@@ -262,14 +334,22 @@ the UI decides how to render, keeping `core/` GTK-free.
 
 ## 10. Live scan feedback
 
-- **Percentage ring loader** (`ui/widgets/ring_loader.py`) — a Cairo circular loader (dark track,
-  red→orange gradient arc, centred **"NN %"**) shown below the Results title while scanning. The
-  percentage is the **true overall ratio of files scanned**, not a cosmetic animation: the scanner
-  reports progress over *all* files — a file with a unique size needs no hashing and counts as done
-  immediately, each hashed candidate and each perceptually-hashed image advances the count, and
-  total work = total files + the image pass. The value eases between updates and is monotonic
-  (never exceeds 100%). Because the walk discovers files (total unknown until it finishes), the
-  walk phase shows a small indeterminate creep (≤ 8%) until real per-file work begins.
+- **Per-source ring list** (Scan page) — the app **stays on Scan during a scan** and shows **one
+  row per source**: a **ring** on the left (slightly reduced, its **percentage centred** on the
+  glyphs) showing that source's **true files-scanned ratio**; on the right the **folder** of the
+  current file, then the **file name** on its own line (same monospace font/size as the folder
+  path, **extension in orange** — not repeated in the path above it), a **2px blue-gradient
+  half-width activity bar** that pulses — *fast* for small files,
+  a *slow crawl* on a large file (and a steady fallback pulse), so a multi-minute hash never looks
+  hung — and a **"Note: large files may take several minutes to scan…"** line. All rings **stay
+  visible until the whole scan completes, then fade together**, and the app switches to Results.
+- **Percentage ring loader** (`ui/widgets/ring_loader.py`) — the same Cairo circular loader (dark
+  track, red→orange gradient arc, centred **"NN %"**) also backs the **overall** ring on Results.
+  The percentage is the **true overall ratio of files scanned**, not a cosmetic animation: the
+  scanner reports progress over *all* files — a file with a unique size needs no hashing and counts
+  as done immediately, each hashed candidate and each perceptually-hashed image advances the count,
+  and total work = total files + the image pass. Monotonic; the walk phase shows a small
+  indeterminate creep (≤ 8%) until real per-file work begins.
 - **Reveal on completion** — groups found during the scan are **buffered**, not shown live. When the
   scan finishes the ring fills to **100%**, holds, and **fades out**, and only then are the result
   cards, savings panel, formula card and action bar built and revealed
@@ -284,8 +364,11 @@ the UI decides how to render, keeping `core/` GTK-free.
 
 - **Theme** (`ui/theme_loader.py`) — injects the approved mockup palette (content darker than
   sidebar, lighter top bar) as `@define-color` overrides for light and dark, following the system.
-- **Settings** — tier, folder, image toggle, hidden, min size, hamming, default action, backups,
-  exclusions, **file types**, **ignored paths**.
+- **Settings** — theme; image-similarity threshold; a **Scanning** group with *Reuse hashes for
+  unchanged files* (`use_hash_cache`, §4b) and *Keep the primary source across drives*
+  (`keep_primary_source`, §4); default action; dry-run; backups; and the scan-scope exclusion
+  presets. Persisted as tolerant JSON by `config/settings.py` (also stores `roots`, `file_types`,
+  `custom_extensions`, `ignored_paths`, `ignored_folders`).
 - **Logging** (`logsetup.py`) — rotating file log at
   `~/.local/state/com.mensuramedia.linfilededuplication/linfilededuplication.log`: startup banner,
   lifecycle, scan start/finish, destructive-action outcomes, plus GLib/GTK capture and a Python
@@ -317,13 +400,31 @@ A dedicated sidebar page (eye-slash icon) that tracks everything the user chose 
 
 ---
 
-## 14. Tests (`tests/`)
+## 14. Scan History (`config/history.py`, `ui/pages/history.py`)
 
-Pure-core tests run anywhere; UI smoke needs a display. Current suite: **56 passing**. Coverage
-includes purity, hashers, scanner (incl. inode-collapse, walk streaming, file-type & ignore
-filters, `occupied_bytes`), policy, backup detection, exclusions, chunking, metadata, glossary,
-preview (incl. video classification), file-type categories, perceptual precision/recall + the
-smooth-image dual-hash guard, `FileEntry` slots, and the full hard-link action matrix.
+Every **confirmed removal** (Move to Trash / Delete All Duplicates / Hard-link), success or
+failure, is recorded as a `HistoryEntry` `{ when, sources, action, ok, error, before_bytes,
+freed_bytes, files_removed, groups }` in a tolerant JSON store at
+`~/.local/state/com.mensuramedia.linfilededuplication/history.json` (newest-first, capped). The
+**History page** shows the **last operation prominently** — date, the **sources** scanned, a
+**before/after bar pair** (reusing `SpaceChart`), a **"You saved N GB"** headline, and a
+success/failure chip — with **earlier operations** listed below. `before_bytes` is the scan's
+`Finished.occupied_bytes`; `freed_bytes` is what the action actually reclaimed;
+`after_bytes = before − freed`.
+
+---
+
+## 15. Tests (`tests/`)
+
+Pure-core tests run anywhere; UI smoke needs a display. Current suite: **71 passing**. Coverage
+includes purity, hashers, scanner (incl. inode-collapse, walk streaming, **multi-source walk +
+source tagging**, **cross-source duplicate grouping**, **per-source progress**, file-type & ignore
+filters, `occupied_bytes`, **keep-primary-source toggle**), the **hash cache** (hit only when
+unchanged; new files hashed + recorded; changed files re-hashed + cache updated; second scan does
+zero re-hashing; remove-on-delete), the **history store** (round-trip, newest-first, cap), policy,
+backup detection, exclusions, chunking, metadata, glossary, preview (incl. video classification),
+file-type categories, perceptual precision/recall + the smooth-image dual-hash guard, `FileEntry`
+slots, and the full hard-link action matrix.
 
 Run: `pytest -q` · lint: `ruff check src tests` · headless build check:
 `python3 -m linfilededuplication --smoke`.

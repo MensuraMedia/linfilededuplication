@@ -54,3 +54,36 @@ def test_second_scan_reuses_cache_and_skips_hashing(tmp_path, monkeypatch):
     groups = scanner.find_exact_groups(list(scanner.walk(opts)), opts, lambda e: None, cache=cache)
     assert calls["n"] == 0                        # reused the cache entirely
     assert len(groups) == 1 and groups[0].count == 2
+
+
+def test_new_files_hashed_and_changed_files_update_the_cache(tmp_path, monkeypatch):
+    import os
+    data = b"shared bytes " * 400
+    a = tmp_path / "a.dat"; a.write_bytes(data)
+    b = tmp_path / "b.dat"; b.write_bytes(data)          # a + b identical -> a candidate pair
+    opts = ScanOptions(root=str(tmp_path), find_images=False, min_size=1)
+    cache = HashCache(tmp_path / "hc.json")
+
+    n = {"h": 0}
+    real = hashers.full_hash
+    def spy(p):
+        n["h"] += 1
+        return real(p)
+    monkeypatch.setattr(hashers, "full_hash", spy)
+
+    # pass 1 — a, b have NO history: both are hashed and recorded
+    scanner.find_exact_groups(scanner.walk(opts), opts, lambda e: None, cache=cache)
+    assert n["h"] == 2 and len(cache) == 2
+
+    # b's mtime changes (edited), and c is a brand-new identical file
+    os.utime(b, (1_000_000_000, 1_000_000_000))
+    (tmp_path / "c.dat").write_bytes(data)
+    n["h"] = 0
+    scanner.find_exact_groups(scanner.walk(opts), opts, lambda e: None, cache=cache)
+    assert n["h"] == 2            # b (changed) + c (new) re-hashed; a (unchanged) reused
+    assert len(cache) == 3        # history updated: b's entry refreshed, c added
+
+    # pass 3 — everything is now unchanged: nothing is hashed
+    n["h"] = 0
+    scanner.find_exact_groups(scanner.walk(opts), opts, lambda e: None, cache=cache)
+    assert n["h"] == 0

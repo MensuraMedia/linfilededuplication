@@ -525,8 +525,8 @@ class ScanPage(BasePage):
         ring.set_progress(fraction, phase)
         bar.pulse()                         # a file event: quick motion for small files
         if detail:
-            path.set_text(detail)
             base = os.path.basename(detail)
+            path.set_text(os.path.dirname(detail) or detail)   # folder only; file name is shown below
             if base:
                 name.set_markup(self._name_markup(base))
             elif phase != "walk":
