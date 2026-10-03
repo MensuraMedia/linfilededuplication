@@ -68,6 +68,19 @@
   .ringcard .state{font-size:11.5px;color:var(--mut);margin-top:3px}
   .ringcard.queued .ring{opacity:.5}
   .ringcard.done .state{color:var(--green)}
+  /* per-source list (current design: ring + folder path + file name + 2px activity bar) */
+  .lrow{display:grid;grid-template-columns:96px 1fr;gap:16px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card2);margin-bottom:12px}
+  .lring{width:84px;height:84px;position:relative;justify-self:center}
+  .lring svg{transform:rotate(-90deg)} .lring .p{position:absolute;inset:0;display:grid;place-items:center;font-size:17px;font-weight:700}
+  .lring .p small{font-size:11px;color:var(--dim)}
+  .lcol{min-width:0} .lcol .fp,.lcol .fn{font-family:var(--mono);font-size:12.5px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lcol .fn .x{color:#ff9e2c}
+  .lbar{height:2px;width:50%;border-radius:2px;background:#15171b;overflow:hidden;position:relative;margin:8px 0 6px}
+  .lbar i{position:absolute;top:0;bottom:0;width:32%;border-radius:2px;background:linear-gradient(90deg,#2f74cf,#78aeea)}
+  .lbar.fast i{animation:scan 1s linear infinite}.lbar.slow i{width:22%;animation:scan 3.2s linear infinite}
+  .lbar.full i{position:static;width:100%;background:#2bbd78;animation:none}
+  @keyframes scan{0%{left:-34%}100%{left:100%}}
+  .lnote{color:var(--mut);font-size:11.5px} .ldone .fn{color:var(--green)}
 
   /* history */
   .hhead{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap}
@@ -139,7 +152,7 @@
   <!-- 2. Scanning with per-source rings -->
   <section>
     <div class="sec-h"><span class="n">2</span><h2>Scanning — a percentage ring per source<span class="tag">live</span></h2></div>
-    <p class="sec-sub">Each source advances independently. Finished sources sit at 100%; the active one climbs; not-yet-reached read "Queued".</p>
+    <p class="sec-sub">A list, one row per source: ring (left) + the folder being scanned, the file name (extension in orange), and a 2px activity bar. All rings stay until the whole scan completes, then fade together.</p>
     <div class="app">
       <nav class="side">
         <div class="brand"><span class="dot"></span>LinFileDedup</div>
@@ -148,39 +161,33 @@
       <div class="main">
         <p class="ptitle">Scanning 3 sources…</p>
         <p class="pnote">117,204 files examined · 41 duplicate groups so far</p>
-        <div class="rings">
-          <div class="ringcard done">
-            <div class="ring">
-              <svg width="118" height="118" viewBox="0 0 118 118">
-                <circle cx="59" cy="59" r="50" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="9"/>
-                <circle cx="59" cy="59" r="50" fill="none" stroke="#34cd88" stroke-width="9" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="0"/>
-              </svg>
-              <div class="pct">100<small>%</small></div>
+        <div>
+          <div class="lrow ldone">
+            <div class="lring"><svg width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="42" cy="42" r="35" fill="none" stroke="#34cd88" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="0"/></svg><div class="p">100<small>%</small></div></div>
+            <div class="lcol">
+              <div class="fp">/home/user/Pictures/2026_05_19</div>
+              <div class="fn">Done — 58,310 files scanned</div>
+              <div class="lbar full"><i></i></div>
+              <div class="lnote">/home/user · complete</div>
             </div>
-            <div class="path">/home/user</div>
-            <div class="state">Done · 58,310 files</div>
           </div>
-          <div class="ringcard">
-            <div class="ring">
-              <svg width="118" height="118" viewBox="0 0 118 118">
-                <circle cx="59" cy="59" r="50" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="9"/>
-                <circle cx="59" cy="59" r="50" fill="none" stroke="url(#g)" stroke-width="9" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="100"/>
-                <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fe3b4e"/><stop offset="1" stop-color="#ff9e2c"/></linearGradient></defs>
-              </svg>
-              <div class="pct">68<small>%</small></div>
+          <div class="lrow">
+            <div class="lring"><svg width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="42" cy="42" r="35" fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="70"/><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fe3b4e"/><stop offset="1" stop-color="#ff9e2c"/></linearGradient></defs><div class="p">68<small>%</small></div></div>
+            <div class="lcol">
+              <div class="fp">/media/user/USB-BACKUP/DCIM/Camera</div>
+              <div class="fn">PXL_20260515_135337617.MP<span class="x">.mp4</span></div>
+              <div class="lbar slow"><i></i></div>
+              <div class="lnote">Note: large files may take several minutes to scan…</div>
             </div>
-            <div class="path">/media/user/USB-BACKUP</div>
-            <div class="state">Hashing · IMG_4821.jpg</div>
           </div>
-          <div class="ringcard queued">
-            <div class="ring">
-              <svg width="118" height="118" viewBox="0 0 118 118">
-                <circle cx="59" cy="59" r="50" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="9"/>
-              </svg>
-              <div class="pct" style="color:var(--mut)">0<small>%</small></div>
+          <div class="lrow">
+            <div class="lring"><svg width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="42" cy="42" r="35" fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="180"/></svg><div class="p">18<small>%</small></div></div>
+            <div class="lcol">
+              <div class="fp">/mnt/photos-external/2024/thumbs</div>
+              <div class="fn">IMG_0412<span class="x">.jpg</span></div>
+              <div class="lbar fast"><i></i></div>
+              <div class="lnote">Note: large files may take several minutes to scan…</div>
             </div>
-            <div class="path">/mnt/photos-external</div>
-            <div class="state">Queued</div>
           </div>
         </div>
         <p class="cap">The overall percentage ring still appears on <b>Results</b> and gates the reveal — results are shown only once everything completes and it fades.</p>

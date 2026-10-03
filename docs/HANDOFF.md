@@ -124,16 +124,20 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
 - **Per-source progress rings** as a list (ring + path/name/activity bar/note); app stays on Scan
   during a scan, all rings stay up then fade together, then switches to Results.
 - **Scan History** (`config/history.py` + History page with before/after bars & "You saved N GB").
-- **Hash cache** (`core/hashcache.py`) for fast repeat / cross-source scans; invalidated after
-  removals.
+- **Hash cache** (`core/hashcache.py`) for fast repeat / cross-source scans — `path →
+  {dev,ino,size,mtime,sha256}`; miss ⇒ hash + record (new files), fingerprint change ⇒ re-hash +
+  update (changed files), all match ⇒ reuse (unchanged); invalidated on removal. Full write-up in
+  `docs/FEATURES.md §4b`.
+- **Settings → Scanning** toggles: `use_hash_cache` and `keep_primary_source` (both default on,
+  honoured by `ScanOptions`).
+- Scan ring rows show the **folder** on the path line; the **file name** (extension orange) sits
+  below it (no duplication).
 
 ---
 
 ## 6. Backlog / known gaps
 
 - **Hard-link has no confirm dialog** (Trash does) — worth adding for consistency.
-- **Settings has no toggle yet** for the hash cache or the keep-primary-source behaviour (both
-  default on via `ScanOptions`); add rows if the user wants to control them.
 - **Perceptual default `hamming=8`** is reasonable but slightly loose for smooth high-res photos;
   the dual-hash guard mitigates it. Tunable in Settings if desired.
 - `.deb` could add `python3-imagehash` / GStreamer codec packs to `Recommends:` so a normal
