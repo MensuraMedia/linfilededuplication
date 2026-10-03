@@ -6,6 +6,7 @@ never blocks. Nothing here imports GTK.
 """
 from __future__ import annotations
 
+import logging
 import os
 import queue
 import threading
@@ -17,9 +18,12 @@ from linfilededuplication.core import (
     backup_detect, chunking, events, exclusions, fuzzy, hashers, image_perceptual, policy)
 from linfilededuplication.core.model import KIND_EXACT, DuplicateGroup, FileEntry
 from linfilededuplication.core.options import ScanOptions
+from linfilededuplication.core.units import human_bytes
 
+log = logging.getLogger("linfilededuplication.scanner")
 Emit = Callable[[events.ScanEvent], None]
 _IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
+_LARGE_FILE = 512 * 1024 * 1024         # log hashing of files this big so slow reads are explained
 
 
 def _is_hidden(name: str) -> bool:
@@ -162,6 +166,8 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
         # progressive prefix hash splits the size bucket cheaply
         by_prefix: dict[str, list[FileEntry]] = defaultdict(list)
         for e in same_size:
+            if cancel is not None and cancel.is_set():
+                return groups
             try:
                 by_prefix[hashers.prefix_hash(e.path)].append(e)
             except OSError:
@@ -172,26 +178,41 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
             if done % 32 == 0:
                 emit(events.Progress(base + done, total, "hash", e.path))
         for same_prefix in by_prefix.values():
+            if cancel is not None and cancel.is_set():
+                return groups
             if len(same_prefix) < 2:
                 continue
             by_full: dict[str, list[FileEntry]] = defaultdict(list)
             for e in same_prefix:
+                if cancel is not None and cancel.is_set():
+                    return groups
                 try:
                     cached = cache.get(e) if cache is not None else None
                     if cached is not None:        # unchanged file: reuse the stored digest
                         e.full_hash = cached
                     else:                          # new/changed file: hash it and remember
-                        e.full_hash = hashers.full_hash(e.path)
+                        if e.size >= _LARGE_FILE:  # log big reads so a slow hash is explainable
+                            log.info("hashing large file (%s): %s",
+                                     human_bytes(e.size), e.path)
+                        e.full_hash = hashers.full_hash(e.path, cancel=cancel)
                         if cache is not None:
                             cache.put(e, e.full_hash)
                     by_full[e.full_hash].append(e)
+                except hashers.Cancelled:
+                    log.info("hashing aborted by cancel: %s", e.path)
+                    return groups
                 except OSError:
                     emit(events.ScanError(f"Could not read {e.name}", "Check file permissions.", e.path))
             for digest, members in by_full.items():
                 if len(members) < 2:
                     continue
-                if opts.verify_bytes and not hashers.bytes_equal([m.path for m in members]):
-                    continue
+                if opts.verify_bytes:
+                    try:
+                        if not hashers.bytes_equal([m.path for m in members], cancel=cancel):
+                            continue
+                    except hashers.Cancelled:
+                        log.info("byte-verify aborted by cancel")
+                        return groups
                 # Collapse files already hard-linked together (same inode): they are one
                 # physical file, so there is nothing to reclaim and they must not reappear.
                 by_inode: dict[tuple[int, int], FileEntry] = {}
@@ -217,6 +238,9 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
     from collections import Counter
     start = time.time()
     roots = opts.all_roots()
+    log.info("scan starting: %d source(s) %s · tier=%s images=%s cache=%s",
+             len(roots), roots, opts.tier, opts.find_images,
+             getattr(opts, "use_hash_cache", True))
     emit(events.ScanStarted(roots[0] if roots else opts.root))
     entries = walk(opts, cancel, emit)
     total_files = len(entries)
@@ -239,7 +263,7 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
                                files_by_source=files_by_source, preferred=preferred, cache=cache)
 
     notes: list[str] = []
-    if opts.find_images:
+    if opts.find_images and not (cancel is not None and cancel.is_set()):
         if not image_perceptual.HAVE_IMAGEHASH:
             notes.append("Install python3-imagehash to find image near-duplicates.")
         elif images:
@@ -254,7 +278,7 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
                 emit(events.GroupFound(grp))
             groups = groups + img_groups
 
-    if opts.advanced_similar:
+    if opts.advanced_similar and not (cancel is not None and cancel.is_set()):
         grouped = {f.path for g in groups for f in g.files}
         remaining = [e for e in entries if e.path not in grouped and not e.is_image]
         fz: list = []
@@ -276,15 +300,19 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
     if cache is not None:
         cache.save()                          # persist reused/new digests for the next scan
     cancelled = cancel is not None and cancel.is_set()
+    elapsed = time.time() - start
     fin = events.Finished(
         cancelled=cancelled,
         files_scanned=len(entries),
         groups=len(groups),
         reclaimable=sum(g.reclaimable for g in groups),
         occupied_bytes=sum(f.size for g in groups for f in g.files),
-        seconds=time.time() - start,
+        seconds=elapsed,
         notes=notes,
     )
+    log.info("scan %s: %d files, %d groups, %s reclaimable (%.1fs)",
+             "cancelled" if cancelled else "finished", len(entries), len(groups),
+             human_bytes(fin.reclaimable), elapsed)
     emit(fin)
     return fin
 
@@ -293,7 +321,8 @@ class ScanThread(threading.Thread):
     """Runs ``scan`` on a worker thread, pushing events onto a queue.
 
     The controller drains ``self.queue`` on the GTK main loop. ``cancel()`` is honoured
-    between files; a terminal Finished is always queued, even on error.
+    promptly — between files AND every chunk while hashing a large file — so Stop works even
+    mid-read of a multi-GB file; a terminal Finished is always queued, even on error.
     """
 
     def __init__(self, opts: ScanOptions, out_queue: "queue.SimpleQueue[events.ScanEvent]") -> None:
@@ -303,6 +332,7 @@ class ScanThread(threading.Thread):
         self._cancel = threading.Event()
 
     def cancel(self) -> None:
+        log.info("scan cancel requested (worker will stop at the next chunk/file)")
         self._cancel.set()
 
     def is_cancelled(self) -> bool:
@@ -312,5 +342,6 @@ class ScanThread(threading.Thread):
         try:
             scan(self.opts, self.queue.put, self._cancel)
         except Exception as exc:                       # never leave the UI waiting
+            log.exception("scan worker crashed: %s", exc)
             self.queue.put(events.ScanError(f"Scan failed: {exc}", "See the log for details."))
             self.queue.put(events.Finished(cancelled=True))

@@ -47,7 +47,7 @@ def test_second_scan_reuses_cache_and_skips_hashing(tmp_path, monkeypatch):
     # second pass: full_hash must NOT be called (every candidate is an unchanged cache hit)
     calls = {"n": 0}
     real = hashers.full_hash
-    def spy(path):
+    def spy(path, **kw):
         calls["n"] += 1
         return real(path)
     monkeypatch.setattr(hashers, "full_hash", spy)
@@ -66,7 +66,7 @@ def test_new_files_hashed_and_changed_files_update_the_cache(tmp_path, monkeypat
 
     n = {"h": 0}
     real = hashers.full_hash
-    def spy(p):
+    def spy(p, **kw):
         n["h"] += 1
         return real(p)
     monkeypatch.setattr(hashers, "full_hash", spy)

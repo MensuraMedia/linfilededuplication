@@ -1,6 +1,7 @@
 """Scan: choose a folder and tier, set options, run, watch progress."""
 from __future__ import annotations
 
+import logging
 import os
 
 from gi.repository import Adw, GLib, Gtk
@@ -13,6 +14,8 @@ from linfilededuplication.ui.pages.base import BasePage
 from linfilededuplication.ui.widgets.common import icon
 from linfilededuplication.ui.widgets.info_hint import InfoHint
 from linfilededuplication.ui.widgets.ring_loader import RingLoader
+
+_log = logging.getLogger("linfilededuplication.scan")
 
 
 class ScanPage(BasePage):
@@ -422,12 +425,16 @@ class ScanPage(BasePage):
 
     def _on_run_clicked(self, _btn) -> None:
         if self.window.controller.running:
+            _log.info("Stop clicked by user — requesting cancel")
+            self.window.toast(_("Stopping… finishing the current file"))
             self.window.controller.cancel()
             return
         if not self.sources:
             self.window.toast(_("Add at least one source to scan."))
             self._add_source_dialog(None)
             return
+        _log.info("Start scan clicked: %d source(s) %s · tier=%s", len(self.sources),
+                  self.sources, self.tier)
         s = self.app.settings
         s.tier = self.tier
         s.roots = list(self.sources)

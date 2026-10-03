@@ -37,3 +37,19 @@ def test_prefix_hash_stable(tmp_path):
     p = tmp_path / "f"
     p.write_bytes(b"z" * 200000)
     assert hashers.prefix_hash(str(p)) == hashers.prefix_hash(str(p))
+
+
+def test_full_hash_and_bytes_equal_abort_on_cancel(tmp_path):
+    import threading
+    import pytest
+    from linfilededuplication.core import hashers as H
+    f1 = tmp_path / "big1.bin"; f1.write_bytes(b"x" * (3 * 1024 * 1024))   # 3 chunks
+    f2 = tmp_path / "big2.bin"; f2.write_bytes(b"x" * (3 * 1024 * 1024))
+    ev = threading.Event(); ev.set()                 # already cancelled
+    with pytest.raises(H.Cancelled):
+        H.full_hash(str(f1), cancel=ev)
+    with pytest.raises(H.Cancelled):
+        H.bytes_equal([str(f1), str(f2)], cancel=ev)
+    # with no cancel, both still work normally
+    assert H.full_hash(str(f1)) == H.full_hash(str(f2))
+    assert H.bytes_equal([str(f1), str(f2)]) is True
