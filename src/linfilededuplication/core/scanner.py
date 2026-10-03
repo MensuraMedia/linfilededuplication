@@ -228,7 +228,7 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
     # total units of work for an accurate percentage: every file is "scanned" once, and image
     # files get one more pass (perceptual hashing).
     total_work = max(1, total_files + (len(images) if do_images else 0))
-    preferred = roots[:1]                       # keep the primary (first) source across drives
+    preferred = roots[:1] if getattr(opts, "keep_primary_source", True) else []
     emit(events.Progress(0, 0, "walk", f"Found {total_files:,} files"))   # caption only
 
     cache = None

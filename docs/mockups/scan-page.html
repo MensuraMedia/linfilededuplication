@@ -1,0 +1,164 @@
+<title>Scan Page</title>
+<meta name="description" content="Mockup of the latest LinFileDedup Scan page — multi-source setup and the per-source scanning ring list.">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#1c1f24; --card:#1e2126; --card2:#24272e; --raise:#2a2e35; --sidebar:#262a30;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.14);
+    --fg:#eef0f2; --dim:#9aa0ab; --mut:#6f7781;
+    --accent:#3584e4; --accent2:#78aeea; --green:#2ec27e; --red:#fe3b4e; --orange:#ff9e2c;
+    --mono:"JetBrains Mono",ui-monospace,"Roboto Mono",monospace; --sans:"Inter",system-ui,"Cantarell",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.5}
+  .wrap{max-width:1000px;margin:0 auto;padding-block:30px;padding-inline:16px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:0 0 6px}
+  h1{font-size:26px;font-weight:800;margin:0 0 6px}
+  .sub{color:var(--dim);margin:0;font-size:15px}
+  .label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:700;margin:26px 0 8px}
+
+  .app{display:grid;grid-template-columns:150px 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+  .side{background:var(--sidebar);padding:14px 10px;border-right:1px solid var(--line);font-size:13px}
+  .brand{font-weight:800;margin:4px 8px 14px;display:flex;align-items:center;gap:8px}
+  .brand .dot{width:16px;height:16px;border-radius:5px;background:linear-gradient(135deg,#4a90e6,#2f74cf)}
+  .side a{display:flex;gap:9px;align-items:center;padding:7px 9px;border-radius:7px;color:var(--dim);text-decoration:none;margin-bottom:2px}
+  .side a.on{background:rgba(255,255,255,.07);color:var(--fg)}
+  .main{padding:18px 20px}
+  .ptitle{font-size:22px;font-weight:800;margin:0 0 2px}
+  .pnote{color:var(--dim);font-size:13px;margin:0 0 16px}
+
+  .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+  .seg b{padding:6px 12px;font-size:13px;background:var(--raise)}
+  .seg span{padding:6px 12px;font-size:13px;color:var(--dim)}
+  .spacer{flex:1}
+  .btn{border:1px solid var(--line2);background:var(--raise);color:var(--fg);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+  .btn.stop{background:var(--red);border-color:transparent;color:#fff}
+
+  .panel{border:1px solid var(--line);border-radius:12px;background:var(--card2);padding:16px;margin-bottom:14px}
+  .panel h3{margin:0 0 3px;font-size:14px}
+  .panel .hint{color:var(--dim);font-size:12.5px;margin:0 0 10px}
+  .src{display:grid;grid-template-columns:28px 1fr auto auto;align-items:center;gap:12px;padding:10px 4px;border-top:1px solid var(--line)}
+  .src:first-of-type{border-top:0}
+  .src .ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.06);font-size:14px}
+  .src .nm{font-family:var(--mono);font-size:12.5px}
+  .src .meta{color:var(--mut);font-size:12px}
+  .src .rm{color:var(--dim);font-size:12px;font-weight:600}
+  .addrow{display:flex;gap:8px;margin-top:10px}
+  .opt{display:flex;align-items:center;gap:12px;padding:12px 2px;border-top:1px solid var(--line)}
+  .opt:first-child{border-top:0}
+  .opt .t{flex:1}.opt .t b{font-weight:600;font-size:14px}.opt .t small{display:block;color:var(--dim);font-size:12px}
+  .sw{width:40px;height:22px;border-radius:999px;background:var(--accent);position:relative;flex:0 0 40px}
+  .sw.off{background:#3a3f47}.sw i{position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:#fff}
+  .sw.off i{left:2px}
+  .ff{display:flex;align-items:center;gap:12px;margin-top:4px}
+  .chk{width:17px;height:17px;border-radius:4px;background:var(--accent);display:inline-grid;place-items:center;color:#fff;font-size:11px}
+  .ext{flex:1;background:#15171b;border:1px solid var(--line2);border-radius:7px;padding:7px 10px;color:var(--mut);font-size:12.5px}
+
+  /* ring list (scanning) */
+  .row{display:grid;grid-template-columns:96px 1fr;gap:16px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card2);margin-bottom:12px}
+  .ring{width:84px;height:84px;position:relative;justify-self:center}
+  .ring svg{transform:rotate(-90deg)} .ring .pct{position:absolute;inset:0;display:grid;place-items:center;font-size:17px;font-weight:700}
+  .ring .pct small{font-size:11px;color:var(--dim)}
+  .col{min-width:0}
+  .path{font-family:var(--mono);font-size:12.5px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .name{font-family:var(--mono);font-size:12.5px;color:var(--fg);margin:1px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .name .x{color:var(--orange)}
+  .bar{height:2px;width:50%;border-radius:2px;background:#15171b;overflow:hidden;position:relative;margin:8px 0 6px}
+  .bar i{position:absolute;top:0;bottom:0;width:34%;border-radius:2px;background:linear-gradient(90deg,#2f74cf,#78aeea)}
+  .bar.fast i{animation:scan 1s linear infinite}.bar.slow i{width:24%;animation:scan 3.2s linear infinite}
+  .bar.full i{position:static;width:100%;animation:none}
+  @keyframes scan{0%{left:-34%}100%{left:100%}}
+  .note{color:var(--mut);font-size:11.5px}
+  .done .name{color:var(--green)}
+  .cap{color:var(--mut);font-size:12px;margin-top:6px}
+  .mini{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+
+<div class="wrap">
+  <p class="kicker">LinFileDedup · Mockup</p>
+  <h1>The Scan page — latest layout</h1>
+  <p class="sub">A preview for review — <b>not the live app</b>. Shows the multi-source setup and the per-source scanning ring list with the latest styling.</p>
+
+  <svg width="0" height="0"><defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fe3b4e"/><stop offset="1" stop-color="#ff9e2c"/></linearGradient>
+  </defs></svg>
+
+  <p class="label">① Setup — choose sources &amp; options</p>
+  <div class="app">
+    <nav class="side">
+      <div class="brand"><span class="dot"></span>LinFileDedup</div>
+      <a>▦ Overview</a><a class="on">🔍 Scan</a><a>▤ Results</a><a>⦸ Ignored</a><a>↺ History</a><a>ⓘ Knowledge</a>
+    </nav>
+    <div class="main">
+      <div class="toolbar">
+        <div class="seg"><b>Simple Scan</b><span>Advanced Scan</span></div>
+        <span class="spacer"></span>
+        <button class="btn primary">Start scan</button>
+      </div>
+      <div class="panel">
+        <h3>Sources to scan</h3>
+        <p class="hint">Duplicates are found across every source — the copy on the first-listed (primary) source is kept.</p>
+        <div class="src"><span class="ic">🖿</span><span class="nm">/home/user</span><span class="meta">primary · 1.9 TB</span><span class="rm">Remove</span></div>
+        <div class="src"><span class="ic">🖴</span><span class="nm">/media/user/USB-BACKUP</span><span class="meta">removable</span><span class="rm">Remove</span></div>
+        <div class="src"><span class="ic">🖴</span><span class="nm">/mnt/photos-external</span><span class="meta">drive</span><span class="rm">Remove</span></div>
+        <div class="addrow"><button class="btn">＋ Add source…</button><button class="btn">Add drive…</button></div>
+      </div>
+      <div class="panel">
+        <div class="opt"><div class="t"><b>Find image near-duplicates</b><small>Perceptual hash, within the similarity threshold</small></div><span class="sw"><i></i></span></div>
+        <div class="opt"><div class="t"><b>Include hidden files</b><small>Dotfiles and dot-folders</small></div><span class="sw off"><i></i></span></div>
+        <div class="opt"><div class="t"><b>Minimum file size (MB)</b></div><span style="font-variant-numeric:tabular-nums;color:var(--dim)">1  − +</span></div>
+      </div>
+      <div class="panel">
+        <h3>File types to scan</h3>
+        <div class="ff"><span class="chk">✓</span><b style="font-size:13px">All Files</b><span style="color:var(--dim);font-size:12.5px">Enter Extension</span><span class="ext">.bak, .csv, .txt, .idx</span><span style="color:var(--dim)">ⓘ</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="label">② Scanning — a ring per source (all stay until the whole scan finishes, then fade together)</p>
+  <div class="app">
+    <nav class="side">
+      <div class="brand"><span class="dot"></span>LinFileDedup</div>
+      <a>▦ Overview</a><a class="on">🔍 Scan</a><a>▤ Results</a><a>⦸ Ignored</a><a>↺ History</a><a>ⓘ Knowledge</a>
+    </nav>
+    <div class="main">
+      <div class="toolbar"><div class="ptitle">Scanning 3 sources…</div><span class="spacer"></span><button class="btn stop">Stop</button></div>
+
+      <div class="row done">
+        <div class="ring"><svg width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="42" cy="42" r="35" fill="none" stroke="#34cd88" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="0"/></svg><div class="pct">100<small>%</small></div></div>
+        <div class="col">
+          <div class="path">/home/user/Pictures/2026_05_19/PXL_20260515_091432.jpg</div>
+          <div class="name">Done — 58,310 files scanned</div>
+          <div class="bar full"><i style="background:#2bbd78"></i></div>
+          <div class="note">/home/user · complete</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="ring"><svg width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="42" cy="42" r="35" fill="none" stroke="url(#grad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="70"/></svg><div class="pct">68<small>%</small></div></div>
+        <div class="col">
+          <div class="path">/media/user/USB-BACKUP/DCIM/Camera/PXL_20260515_135337617.MP.mp4</div>
+          <div class="name">PXL_20260515_135337617.MP<span class="x">.mp4</span></div>
+          <div class="bar slow"><i></i></div>
+          <div class="note">Note: large files may take several minutes to scan…</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="ring"><svg width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/><circle cx="42" cy="42" r="35" fill="none" stroke="url(#grad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="180"/></svg><div class="pct">18<small>%</small></div></div>
+        <div class="col">
+          <div class="path">/mnt/photos-external/2024/thumbs/IMG_0412.jpg</div>
+          <div class="name">IMG_0412<span class="x">.jpg</span></div>
+          <div class="bar fast"><i></i></div>
+          <div class="note">Note: large files may take several minutes to scan…</div>
+        </div>
+      </div>
+
+      <p class="cap">Ring % centred · file name in the same mono font as the path (extension in orange) · 2px blue activity bar at half width.</p>
+    </div>
+  </div>
+
+  <p class="mini">Mockup only. Matches the live Scan page. Settings now exposes two toggles that affect this: <b>Reuse hashes for unchanged files</b> (hash cache, faster re-scans) and <b>Keep the primary source across drives</b>. Design notes: <code>docs/CONCEPT-MULTISOURCE.md</code>, <code>docs/CONCEPT-SCAN-RINGS.md</code>.</p>
+</div>

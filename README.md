@@ -83,6 +83,7 @@ listed below (successes and failures).
 
 The design is captured in living HTML mockups under [`docs/mockups/`](docs/mockups/):
 
+- [`scan-page.html`](docs/mockups/scan-page.html) — the full latest Scan page (multi-source setup + per-source ring list).
 - [`scan-ring-list.html`](docs/mockups/scan-ring-list.html) — the per-source scan display (ring + path/file/activity bar).
 - [`multisource-scan.html`](docs/mockups/multisource-scan.html) — multi-source scanning, per-source progress, and History.
 - [`results-spotcheck-proposals.html`](docs/mockups/results-spotcheck-proposals.html) — Results & SpotCheck proposals.

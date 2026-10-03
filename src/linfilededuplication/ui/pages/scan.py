@@ -408,6 +408,7 @@ class ScanPage(BasePage):
             min_size=max(1, int(self.min_row.get_value()) * 1_000_000),
             hamming=s.hamming,
             use_hash_cache=getattr(s, "use_hash_cache", True),
+            keep_primary_source=getattr(s, "keep_primary_source", True),
             detect_backups=s.detect_backups,
             keep_newest_backup=s.keep_newest_backup,
             exclusions=list(s.exclusions),

@@ -150,3 +150,19 @@ def test_per_source_progress_events_emitted(tmp_path):
     # every source settles at 100% (done == total) by the end
     final = {e.source: e for e in per_source if e.total and e.done == e.total}
     assert {str(a), str(b)} <= set(final)
+
+
+def test_keep_primary_source_can_be_disabled(tmp_path):
+    a = tmp_path / "disk"; a.mkdir()
+    b = tmp_path / "backup"; b.mkdir()
+    data = b"same" * 500
+    # make the copy on the SECOND source newer-looking by name so, without source preference,
+    # the primary isn't automatically the keeper
+    (a / "photo (1).jpg").write_bytes(data)      # derived name on primary
+    (b / "photo.jpg").write_bytes(data)          # original name on backup
+    opts = ScanOptions(roots=[str(a), str(b)], find_images=False, min_size=1,
+                       keep_primary_source=False)
+    groups = [e.group for e in _collect(opts) if isinstance(e, events.GroupFound)]
+    assert len(groups) == 1
+    # with source preference OFF, the non-derived name wins -> the backup copy is kept
+    assert groups[0].keeper.path.startswith(str(b))

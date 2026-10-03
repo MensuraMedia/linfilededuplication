@@ -29,6 +29,7 @@ class Settings:
     min_size_mb: int = 1
     hamming: int = 8
     use_hash_cache: bool = True       # reuse cached hashes for unchanged files (fast re-scans)
+    keep_primary_source: bool = True  # across drives, keep the copy on the first-listed source
     default_action: str = "trash"   # trash | hardlink
     dry_run: bool = True
     detect_backups: bool = True

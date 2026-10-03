@@ -40,6 +40,25 @@ class SettingsPage(BasePage):
         matching.add(self.hamming_row)
         self.add(matching)
 
+        scanning = Adw.PreferencesGroup(
+            title=_("Scanning"),
+            description=_("Speed and multi-source behaviour."))
+        self.cache_row = Adw.SwitchRow(
+            title=_("Reuse hashes for unchanged files"),
+            subtitle=_("A hash cache skips re-reading files that haven't changed, so repeat and "
+                       "cross-source scans finish much faster"))
+        self.cache_row.set_active(getattr(s, "use_hash_cache", True))
+        self.cache_row.connect("notify::active", self._on_cache)
+        scanning.add(self.cache_row)
+        self.primary_row = Adw.SwitchRow(
+            title=_("Keep the primary source across drives"),
+            subtitle=_("When equal copies are on different sources, keep the one on the "
+                       "first-listed source and remove the copy on the others"))
+        self.primary_row.set_active(getattr(s, "keep_primary_source", True))
+        self.primary_row.connect("notify::active", self._on_primary)
+        scanning.add(self.primary_row)
+        self.add(scanning)
+
         safety = Adw.PreferencesGroup(title=_("Safety"))
         self.action_row = Adw.ComboRow(title=_("Default action for extras"))
         self.action_row.set_model(Gtk.StringList.new([_("Move to Trash"), _("Hard-link")]))
@@ -100,6 +119,14 @@ class SettingsPage(BasePage):
 
     def _on_dry(self, *_a) -> None:
         self.app.settings.dry_run = self.dry_row.get_active()
+        self._save()
+
+    def _on_cache(self, *_a) -> None:
+        self.app.settings.use_hash_cache = self.cache_row.get_active()
+        self._save()
+
+    def _on_primary(self, *_a) -> None:
+        self.app.settings.keep_primary_source = self.primary_row.get_active()
         self._save()
 
     def _on_backup(self, *_a) -> None:
