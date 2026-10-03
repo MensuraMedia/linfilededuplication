@@ -177,13 +177,24 @@ Folder chooser, **Find image near-duplicates** toggle, **Include hidden files**,
 size (MB)** — each with an InfoHint where useful.
 
 ### 5.3 Scan exclusions (`core/exclusions.py`)
-Named presets (system, cache, build artifacts, VCS) + custom globs, all **on by default**, so a
-`/home` scan skips `.cache`, `node_modules`, `.git`, `/usr`, etc. Wired into `walk()` and
-Settings.
+Named presets (system, cache, build artifacts, VCS, apps, stubs, trash) + custom globs, all
+**on by default**, so a `/home` scan skips `.cache`, `node_modules`, `.git`, `/usr`, etc. Wired
+into `walk()` and Settings. Because mounted Windows/macOS drives are common dedup sources, the
+presets also cover the foreign system and recycle folders that live on them: the **System files**
+preset skips `System Volume Information`, `$SysReset`, `Config.Msi` and `Recovery`, and the
+**Trash and recycle bins** preset skips `$RECYCLE.BIN`/`$Recycle.Bin`, `$RECYCLER`/`RECYCLER`/
+`RECYCLED` and macOS `.Trashes` alongside the Linux Trash (directory-name matching is
+case-sensitive, so the known case variants are listed explicitly).
 
 ### 5.4 File-type filter (`core/filetypes.py`, Scan page)
-Columns of popular types in four categories — **Images / Video / Music / Documents** — each a
-label mapped to one or more extensions (e.g. JPG → `.jpg`/`.jpeg`, RAW → `.cr2`/`.nef`/…).
+Columns of popular types in five categories — **Images / Video / Music / Documents / Email** —
+each a label mapped to one or more extensions (e.g. JPG → `.jpg`/`.jpeg`, RAW → `.cr2`/`.nef`/…).
+**Documents** covers PDF, EPUB, plain text, and the full LibreOffice / OpenDocument family across
+Writer, Calc, Impress, Draw, Math and Base (`.odt`/`.ott`/`.fodt`/`.odm`/`.sxw`, `.ods`/`.fods`/
+`.sxc`, `.odp`/`.fodp`/`.sxi`, `.odg`/`.sxd`, `.odf`/`.mml`/`.sxm`, `.odb`) alongside the MS Office
+equivalents. **Email** covers the popular clients — EML (Thunderbird/Windows Mail), Outlook
+(`.msg`/`.pst`/`.ost`), Mbox (Thunderbird/Evolution/KMail), Apple Mail (`.emlx`), Outlook Express
+(`.dbx`) and Lotus/IBM Notes (`.nsf`).
 
 - **Per-type checkbox** — include just that type.
 - **Column "All"** — a tri-state checkbox (checked / mixed / empty) selecting the whole column.
@@ -195,9 +206,10 @@ label mapped to one or more extensions (e.g. JPG → `.jpg`/`.jpeg`, RAW → `.c
   All Files ticked everything is scanned regardless.
 - **"Exclusion"** (free-text + one-tap large-type boxes, with an InfoHint) — extensions to **skip
   entirely**, which **take precedence** over the include selection. Tick common large types (VDI,
-  VMDK, VHD, QCOW2, ISO, IMG, BIN, DMG) or type your own (`settings.exclude_extensions` +
-  `settings.exclude_large` → `ScanOptions.exclude_types`; `walk()` drops matching files). Ideal for
-  keeping multi-GB disk images out of a scan so it finishes fast.
+  VMDK, VHD, QCOW2, ISO, IMG, BIN, DMG), use the **"All"** tri-state box beside them to toggle every
+  large type at once, or type your own (unified into `settings.exclude_types` →
+  `ScanOptions.exclude_types`; `walk()` drops matching files). Ideal for keeping multi-GB disk
+  images out of a scan so it finishes fast.
 - **Semantics:** the selection becomes `ScanOptions.file_types` (a list of extensions); the walk
   keeps only matching files. An empty list = no filter = scan everything. The chosen set persists
   in Settings between runs.

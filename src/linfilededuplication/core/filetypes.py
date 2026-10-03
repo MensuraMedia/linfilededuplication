@@ -43,11 +43,29 @@ CATEGORIES: list[dict] = [
     ]},
     {"key": "document", "label": "Documents", "types": [
         {"label": "PDF", "exts": [".pdf"]},
-        {"label": "Word", "exts": [".doc", ".docx", ".odt", ".rtf"]},
-        {"label": "Excel", "exts": [".xls", ".xlsx", ".ods", ".csv"]},
-        {"label": "PowerPoint", "exts": [".ppt", ".pptx", ".odp"]},
-        {"label": "Text", "exts": [".txt", ".md"]},
+        # Word processing: MS + LibreOffice/OpenOffice Writer (odt/ott/fodt/odm/sxw)
+        {"label": "Word", "exts": [".doc", ".docx", ".odt", ".ott", ".fodt", ".odm", ".rtf",
+                                   ".sxw", ".stw"]},
+        # Spreadsheets: MS + LibreOffice Calc (ods/ots/fods/sxc)
+        {"label": "Spreadsheet", "exts": [".xls", ".xlsx", ".ods", ".ots", ".fods", ".csv",
+                                          ".sxc", ".stc"]},
+        # Presentations: MS + LibreOffice Impress (odp/otp/fodp/sxi)
+        {"label": "Presentation", "exts": [".ppt", ".pptx", ".odp", ".otp", ".fodp", ".sxi",
+                                           ".sti"]},
+        # LibreOffice Draw / Math / Base
+        {"label": "Draw", "exts": [".odg", ".otg", ".fodg", ".sxd"]},
+        {"label": "Formula", "exts": [".odf", ".mml", ".sxm"]},
+        {"label": "Database", "exts": [".odb"]},
+        {"label": "Text", "exts": [".txt", ".md", ".rst", ".tex"]},
         {"label": "EPUB", "exts": [".epub"]},
+    ]},
+    {"key": "email", "label": "Email", "types": [
+        {"label": "EML", "exts": [".eml"]},                       # Thunderbird export, Windows Mail
+        {"label": "Outlook", "exts": [".msg", ".pst", ".ost"]},   # Outlook message + data stores
+        {"label": "Mbox", "exts": [".mbox", ".mbx"]},             # Thunderbird / Evolution / KMail
+        {"label": "Apple Mail", "exts": [".emlx"]},
+        {"label": "Express", "exts": [".dbx"]},                   # Outlook Express
+        {"label": "Notes", "exts": [".nsf"]},                     # IBM/Lotus Notes
     ]},
 ]
 

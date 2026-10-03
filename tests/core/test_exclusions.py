@@ -27,3 +27,22 @@ def test_walk_skips_excluded_dirs(tmp_path):
     names = {e.name for e in walk(opts)}
     assert "keep.txt" in names
     assert "dep.js" not in names            # node_modules pruned
+
+
+def test_windows_recycle_and_system_dirs_excluded():
+    from linfilededuplication.core import exclusions
+    m = exclusions.compile(None)                         # all presets on
+    for d in ("$RECYCLE.BIN", "$Recycle.Bin", "RECYCLER", "System Volume Information"):
+        assert m.excludes(f"/media/user/USB/{d}", True), d
+    # a normal folder is NOT excluded
+    assert not m.excludes("/media/user/USB/Photos", True)
+
+
+def test_recycle_dir_contents_not_walked(tmp_path):
+    from linfilededuplication.core.options import ScanOptions
+    from linfilededuplication.core.scanner import walk
+    (tmp_path / "keep.jpg").write_bytes(b"x" * 4000)
+    rec = tmp_path / "$RECYCLE.BIN"; rec.mkdir()
+    (rec / "deleted.jpg").write_bytes(b"x" * 4000)
+    names = {e.name for e in walk(ScanOptions(root=str(tmp_path), min_size=1, exclusions=["trash"]))}
+    assert names == {"keep.jpg"}                         # recycle-bin contents skipped

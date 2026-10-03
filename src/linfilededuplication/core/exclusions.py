@@ -13,7 +13,8 @@ from dataclasses import dataclass, field
 PRESETS: dict[str, dict] = {
     "system": {
         "label": "System files",
-        "dirs": set(),
+        # dir names cover Windows system folders found on mounted NTFS/USB drives
+        "dirs": {"System Volume Information", "$SysReset", "Config.Msi", "Recovery"},
         "prefixes": ["/proc", "/sys", "/dev", "/run", "/boot", "/usr", "/lib", "/lib64", "/sbin", "/bin"],
         "globs": [],
     },
@@ -49,8 +50,10 @@ PRESETS: dict[str, dict] = {
         "globs": ["*/.DS_Store", ".DS_Store", "*/Thumbs.db", "Thumbs.db", "*/desktop.ini", "desktop.ini"],
     },
     "trash": {
-        "label": "Trash",
-        "dirs": {".Trash"},
+        "label": "Trash and recycle bins",
+        # Linux Trash plus Windows/macOS recycle bins on mounted drives (case variants included)
+        "dirs": {".Trash", "$RECYCLE.BIN", "$Recycle.Bin", "$RECYCLER", "RECYCLER", "RECYCLED",
+                 ".Trashes"},
         "prefixes": [],
         "globs": ["*/.local/share/Trash/*", "*/.Trash-*/*"],
     },

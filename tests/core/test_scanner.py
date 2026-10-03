@@ -166,3 +166,26 @@ def test_keep_primary_source_can_be_disabled(tmp_path):
     assert len(groups) == 1
     # with source preference OFF, the non-derived name wins -> the backup copy is kept
     assert groups[0].keeper.path.startswith(str(b))
+
+
+def test_duplicate_file_types_detected_across_sources(tmp_path):
+    """General cross-source check: identical content on two different sources — even with a
+    different file name — is detected as one duplicate group; unique files are not; the copy on
+    the primary (first-listed) source is kept and one copy is reclaimable."""
+    a = tmp_path / "sourceA"; a.mkdir()          # e.g. internal disk (primary)
+    b = tmp_path / "sourceB"; b.mkdir()          # e.g. USB backup
+    same = b"identical document content " * 2000
+    (a / "report.odt").write_bytes(same)         # original on A
+    (b / "report-backup.odt").write_bytes(same)  # same bytes, different NAME, on B
+    (a / "unique-a.txt").write_bytes(b"A" * 5000)    # unique
+    (b / "unique-b.txt").write_bytes(b"B" * 6000)    # unique (different size)
+
+    opts = ScanOptions(roots=[str(a), str(b)], find_images=False, min_size=1)
+    evs = _collect(opts)
+    groups = [e.group for e in evs if isinstance(e, events.GroupFound)]
+    fin = [e for e in evs if isinstance(e, events.Finished)][-1]
+
+    assert len(groups) == 1 and groups[0].count == 2         # exactly the cross-source pair
+    assert {f.source for f in groups[0].files} == {str(a), str(b)}   # spans BOTH sources
+    assert groups[0].keeper.source == str(a)                 # keeper on the primary source
+    assert fin.reclaimable == len(same)                      # one copy reclaimable

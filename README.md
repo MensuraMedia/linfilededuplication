@@ -191,15 +191,21 @@ half-formed.
 
 ### Choose exactly what to scan
 
-- **File-type filter** — columns of popular types (**Images / Video / Music / Documents**), each
-  with a tri-state **All**, plus a master **All Files**, and a free-text **Enter Extension** field
-  for anything else (e.g. `.bak, .csv, .idx`) that's *added* to your selections.
+- **File-type filter** — columns of popular types (**Images / Video / Music / Documents / Email**),
+  each with a tri-state **All**, plus a master **All Files**, and a free-text **Enter Extension**
+  field for anything else (e.g. `.bak, .csv, .idx`) that's *added* to your selections. Documents
+  cover PDF, EPUB and the full **LibreOffice / OpenDocument** family (Writer, Calc, Impress, Draw,
+  Math, Base) next to MS Office; Email covers EML, Outlook (`.pst`/`.ost`/`.msg`), Mbox, Apple Mail
+  and more.
 - **Exclusion** — a free-text field plus one-tap checkboxes for common **large types** (VDI, VMDK,
-  VHD, QCOW2, ISO, IMG, BIN, DMG) to **skip entirely** — ideal for keeping multi-GB disk images out
-  of a scan. Exclusions take precedence over the include selection.
+  VHD, QCOW2, ISO, IMG, BIN, DMG), with an **All** box to toggle them together, to **skip
+  entirely** — ideal for keeping multi-GB disk images out of a scan. Exclusions take precedence over
+  the include selection.
 - **Scan scope (exclusions)** — presets that skip files an app or the OS can recreate (**system
   files, caches, package/build artifacts, version-control internals, Trash**) plus custom globs.
-  Excluded paths are never scanned and never removable.
+  These also cover the **Windows/macOS system and recycle folders** (`$RECYCLE.BIN`, `System Volume
+  Information`, `$RECYCLER`, …) that appear on mounted drives. Excluded paths are never scanned and
+  never removable.
 - **Ignore files & folders** — on Results, **Ignore Files** or **Ignore Folder** greys out rows
   (no action taken) and skips them in **every future scan**; the dedicated **Ignored** page lists
   everything you've skipped, with **Resume scanning** on any entry.

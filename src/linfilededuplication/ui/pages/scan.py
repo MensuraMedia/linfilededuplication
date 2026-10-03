@@ -194,14 +194,53 @@ class ScanPage(BasePage):
 
         flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, min_children_per_line=2,
                            max_children_per_line=8, column_spacing=16, row_spacing=4)
+        # "All" tri-state: ticks/unticks every large-type box in one tap
+        self._exclude_all = Gtk.CheckButton(label=_("All"))
+        self._exclude_all.add_css_class("app-cat-all")
+        self._exclude_all.set_tooltip_text(_("Exclude every large file type below"))
+        self._exclude_all.connect("toggled", self._toggle_all_excludes)
+        flow.append(self._exclude_all)
         for t in filetypes.LARGE_TYPES:
             cb = Gtk.CheckButton(label=t["label"])
             cb.set_active(all(e in excl for e in t["exts"]))
             self._exclude_checks[cb] = t["exts"]
-            cb.connect("toggled", lambda _c: self._save_exclusions())
+            cb.connect("toggled", lambda _c: self._on_exclude_toggled())
             flow.append(cb)
         box.append(flow)
+        self._sync_exclude_all()
         return box
+
+    def _on_exclude_toggled(self) -> None:
+        """A single large-type box changed: refresh the 'All' tri-state and persist."""
+        if getattr(self, "_excl_syncing", False):
+            return
+        self._sync_exclude_all()
+        self._save_exclusions()
+
+    def _toggle_all_excludes(self, cb: Gtk.CheckButton) -> None:
+        """The 'All' box was clicked: drive every large-type box to match, then save once."""
+        if getattr(self, "_excl_syncing", False):
+            return
+        self._excl_syncing = True
+        if cb.get_inconsistent():                    # first click off an indeterminate state → all on
+            cb.set_inconsistent(False)
+            cb.set_active(True)
+        want = cb.get_active()
+        for ecb in self._exclude_checks:
+            ecb.set_active(want)
+        self._excl_syncing = False
+        self._save_exclusions()
+
+    def _sync_exclude_all(self) -> None:
+        """Reflect the large-type boxes in the 'All' checkbox (checked / unchecked / mixed)."""
+        if not hasattr(self, "_exclude_all") or not self._exclude_checks:
+            return
+        n = sum(1 for cb in self._exclude_checks if cb.get_active())
+        total = len(self._exclude_checks)
+        self._excl_syncing = True
+        self._exclude_all.set_inconsistent(0 < n < total)
+        self._exclude_all.set_active(n == total)
+        self._excl_syncing = False
 
     def _selected_exclude_types(self) -> list[str]:
         """Extensions to exclude: the checked large types plus the free-text field."""
@@ -234,6 +273,7 @@ class ScanPage(BasePage):
                 large_exts.update(cb_exts)
         self._exclude_entry.set_text(", ".join(sorted(excl - large_exts)))
         self._loading_exclusions = False
+        self._sync_exclude_all()
 
     def _category_column(self, cat: dict, saved_set: set[str]) -> Gtk.Widget:
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)

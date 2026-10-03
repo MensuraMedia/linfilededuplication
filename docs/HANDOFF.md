@@ -26,7 +26,7 @@ MensuraMedia `gtk4-dashboard-template` house pattern.
 ./run.sh                        # or: PYTHONPATH=src .venv/bin/python -m linfilededuplication
 ./run.sh --debug                # verbose logging
 python3 -m linfilededuplication --smoke   # build every page headless and exit (CI-safe)
-pytest -q                       # 56 tests; pure-core runs anywhere, UI smoke needs a display
+pytest -q                       # 78 tests; pure-core runs anywhere, UI smoke needs a display
 ruff check src tests            # lint (ruff not always installed in the venv)
 scripts/build-deb.sh            # -> dist/linfilededuplication_<ver>_all.deb
 scripts/install.sh              # install to ~/.local (writes launcher, icons, index.theme)

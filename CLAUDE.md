@@ -77,5 +77,5 @@ Rules of the house:
 
 P0–P6 complete: exact + image + advanced (chunking/fuzzy/metadata) engine, SpotCheck, backups,
 exclusions, info icons, Knowledge page, and full desktop integration (launcher, menu, tray,
-Alt-Tab, icon, `.deb`). 29 tests passing. Roadmap in `docs/CONCEPT.md`; feature notes in
+Alt-Tab, icon, `.deb`). 78 tests passing. Roadmap in `docs/CONCEPT.md`; feature notes in
 `docs/SPOTCHECK.md`.
