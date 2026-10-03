@@ -182,14 +182,18 @@ class ResultsPage(BasePage):
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         card.add_css_class("app-card")
         card.add_css_class("app-savings")
-        title = Gtk.Label(label=_("How LinFileDedup decides what to keep"), xalign=0.0)
+        expander = Gtk.Expander()
+        expander.set_expanded(False)                 # collapsed by default
+        title = Gtk.Label(label=_("Built-in file rules"), xalign=0.0)
         title.add_css_class("app-group-title")
+        expander.set_label_widget(title)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        content.set_margin_top(10)
         sub = Gtk.Label(xalign=0.0, wrap=True, label=_(
             "One file in every group is always kept — only the extra copies are ever removed."))
         sub.add_css_class("app-dim")
         sub.add_css_class("app-small")
-        card.append(title)
-        card.append(sub)
+        content.append(sub)
         g, r = "#2ec27e", "#e2564b"
         rules = [
             _("<b>Same size and type.</b> The <span foreground=\"{g}\">newest</span> copy is kept; "
@@ -217,7 +221,9 @@ class ResultsPage(BasePage):
             rowb.append(num)
             rowb.append(body)
             grid.append(rowb)
-        card.append(grid)
+        content.append(grid)
+        expander.set_child(content)
+        card.append(expander)
         return card
 
     def _show_savings(self, fin) -> None:
@@ -600,6 +606,7 @@ class ResultsPage(BasePage):
         fin = getattr(self, "_last_fin", None)
         HistoryStore().add(HistoryEntry(
             sources=list(getattr(self.window, "last_scan_roots", [])),
+            exclusions=list(getattr(self.window, "last_scan_exclusions", [])),
             action=action, ok=(done > 0), error=(errors[0] if errors else ""),
             before_bytes=(fin.occupied_bytes if fin else 0),
             freed_bytes=freed, files_removed=done,

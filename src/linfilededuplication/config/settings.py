@@ -38,8 +38,7 @@ class Settings:
     exclusions: list[str] = field(default_factory=lambda: list(DEFAULT_ON))
     file_types: list[str] = field(default_factory=list)   # [] = all types
     custom_extensions: str = ""                           # extra extensions, comma-separated
-    exclude_extensions: str = ""                          # extensions to exclude, comma-separated
-    exclude_large: list[str] = field(default_factory=list)  # checked large-type labels to exclude
+    exclude_types: list[str] = field(default_factory=list)  # extensions excluded from scans
     ignored_paths: list[str] = field(default_factory=list)   # files the user chose to ignore
     ignored_folders: list[str] = field(default_factory=list)  # folders the user chose to ignore
 

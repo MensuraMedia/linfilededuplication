@@ -106,6 +106,7 @@ class MainWindow(Adw.ApplicationWindow):
     # --- scan glue -------------------------------------------------------
     def start_scan(self, opts) -> None:
         self.last_scan_roots = opts.all_roots()     # remembered for History entries
+        self.last_scan_exclusions = list(getattr(opts, "exclude_types", []))
         self.show_page("scan")                      # stay on Scan to watch per-source rings
         self.controller.start(opts)
 

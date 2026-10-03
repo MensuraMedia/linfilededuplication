@@ -33,3 +33,11 @@ def test_store_tolerates_garbage(tmp_path):
     p = tmp_path / "history.json"
     p.write_text("{ not valid json")
     assert HistoryStore(p).load() == []
+
+
+def test_entry_exclusions_roundtrip(tmp_path):
+    from linfilededuplication.config.history import HistoryEntry
+    e = HistoryEntry(sources=["/a"], exclusions=[".vdi", ".iso"], before_bytes=100, freed_bytes=40)
+    back = HistoryEntry.from_dict(e.to_dict())
+    assert back.exclusions == [".vdi", ".iso"]
+    assert back.after_bytes == 60

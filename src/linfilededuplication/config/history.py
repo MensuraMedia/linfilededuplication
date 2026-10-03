@@ -26,6 +26,7 @@ def _history_path() -> Path:
 class HistoryEntry:
     when: float = field(default_factory=time.time)   # epoch seconds
     sources: list[str] = field(default_factory=list)  # roots that were scanned
+    exclusions: list[str] = field(default_factory=list)  # extensions excluded from this scan
     action: str = "trash"                            # "trash" | "hardlink"
     ok: bool = True
     error: str = ""

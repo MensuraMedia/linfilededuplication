@@ -236,9 +236,9 @@ At the top of a finished scan: a headline sentiment **"You can free up N GB"** (
 Bars are square-cornered recessed meters (no rounding, no gridlines). Backed by a new
 `Finished.occupied_bytes`.
 
-### 6.2 "How LinFileDedup decides what to keep" card
-A persistent explainer listing the §4 keep/delete rules, with keep words in green and delete
-words in red. Makes the automatic decisions transparent.
+### 6.2 "Built-in file rules" card
+A **collapsed-by-default** expander listing the §4 keep/delete rules, with keep words in green and
+delete words in red. Expand it to see exactly how the keeper is chosen.
 
 ### 6.3 Action bar (above the findings, below the info card)
 - **Nothing selected / N files selected · reclaim X** — live summary.
@@ -399,6 +399,9 @@ the UI decides how to render, keeping `core/` GTK-free.
 A dedicated sidebar page (eye-slash icon) that tracks everything the user chose to skip:
 - A **top explainer card** with an InfoHint (*"Resumed files and locations are removed from this
   list"*).
+- **Excluded file types** section listing every extension excluded on the Scan page
+  (`settings.exclude_types`), each with **Resume scanning** that un-excludes it and syncs the Scan
+  page UI.
 - **Ignored folders** and **Ignored files** sections, each row showing the path and a **Resume
   scanning** button that removes it from the ignore list so the next scan considers it again.
 - Reads/writes `settings.ignored_folders` / `settings.ignored_paths`; refreshes on show.
@@ -408,12 +411,13 @@ A dedicated sidebar page (eye-slash icon) that tracks everything the user chose 
 ## 14. Scan History (`config/history.py`, `ui/pages/history.py`)
 
 Every **confirmed removal** (Move to Trash / Delete All Duplicates / Hard-link), success or
-failure, is recorded as a `HistoryEntry` `{ when, sources, action, ok, error, before_bytes,
-freed_bytes, files_removed, groups }` in a tolerant JSON store at
+failure, is recorded as a `HistoryEntry` `{ when, sources, exclusions, action, ok, error,
+before_bytes, freed_bytes, files_removed, groups }` in a tolerant JSON store at
 `~/.local/state/com.mensuramedia.linfilededuplication/history.json` (newest-first, capped). The
-**History page** shows the **last operation prominently** — date, the **sources** scanned, a
-**before/after bar pair** (reusing `SpaceChart`), a **"You saved N GB"** headline, and a
-success/failure chip — with **earlier operations** listed below. `before_bytes` is the scan's
+**History page** shows the **last operation prominently** — date, the **sources** scanned, an
+**"Exclusion: .vdi, .vmdk, …"** line when extensions were excluded, a **before/after bar pair**
+(reusing `SpaceChart`), a **"You saved N GB"** headline, and a success/failure chip — with
+**earlier operations** listed below. `before_bytes` is the scan's
 `Finished.occupied_bytes`; `freed_bytes` is what the action actually reclaimed;
 `after_bytes = before − freed`.
 

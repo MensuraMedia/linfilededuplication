@@ -93,6 +93,14 @@ class HistoryPage(BasePage):
         srcs.add_css_class("app-mono")
         card.append(srcs)
 
+        if e.exclusions:
+            exc = Gtk.Label(xalign=0.0, wrap=True, label=_("Exclusion: {x}").format(
+                x=", ".join(e.exclusions)))
+            exc.add_css_class("app-dim")
+            exc.add_css_class("app-small")
+            exc.add_css_class("app-mono")
+            card.append(exc)
+
         if e.before_bytes > 0:
             chart = SpaceChart()
             chart.set_values(e.before_bytes, e.freed_bytes)   # Now = before, After = after cleanup

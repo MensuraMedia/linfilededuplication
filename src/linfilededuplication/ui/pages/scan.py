@@ -156,21 +156,31 @@ class ScanPage(BasePage):
         return card
 
     def _exclude_section(self) -> Gtk.Widget:
-        """Exclude extensions from the scan — a free-text field plus one-tap large-type boxes."""
-        s = self.app.settings
+        """Exclude extensions from the scan — a free-text field plus one-tap large-type boxes.
+        Reads/writes a single list (``settings.exclude_types``) so the Ignored page can show and
+        clear the same exclusions."""
         self._exclude_checks: dict[Gtk.CheckButton, list[str]] = {}
+        excl = {e.lower() for e in getattr(self.app.settings, "exclude_types", [])}
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         box.set_margin_top(14)
         sep = Gtk.Separator()
         sep.set_margin_bottom(8)
         box.append(sep)
 
+        # extensions covered by a (fully-selected) large-type box vs. free-text ones
+        large_exts: set = set()
+        for t in filetypes.LARGE_TYPES:
+            if all(e in excl for e in t["exts"]):
+                large_exts.update(t["exts"])
+        free = sorted(excl - large_exts)
+
         row = Gtk.Box(spacing=8)
         lbl = Gtk.Label(label=_("Exclusion"))
         lbl.add_css_class("app-small")
         self._exclude_entry = Gtk.Entry(hexpand=True)
         self._exclude_entry.set_placeholder_text(".vdi, .iso, .img, .bin")
-        self._exclude_entry.set_text(getattr(s, "exclude_extensions", ""))
+        self._exclude_entry.set_text(", ".join(free))
+        self._exclude_entry.connect("changed", lambda _e: self._save_exclusions())
         row.append(lbl)
         row.append(self._exclude_entry)
         row.append(InfoHint(self.window, "exclude-extensions"))
@@ -184,11 +194,11 @@ class ScanPage(BasePage):
 
         flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, min_children_per_line=2,
                            max_children_per_line=8, column_spacing=16, row_spacing=4)
-        saved_large = set(getattr(s, "exclude_large", []))
         for t in filetypes.LARGE_TYPES:
             cb = Gtk.CheckButton(label=t["label"])
-            cb.set_active(t["label"] in saved_large)
+            cb.set_active(all(e in excl for e in t["exts"]))
             self._exclude_checks[cb] = t["exts"]
+            cb.connect("toggled", lambda _c: self._save_exclusions())
             flow.append(cb)
         box.append(flow)
         return box
@@ -203,6 +213,27 @@ class ScanPage(BasePage):
         text = self._exclude_entry.get_text() if hasattr(self, "_exclude_entry") else ""
         exts += [p for p in re.split(r"[,\s]+", text.strip()) if p]
         return filetypes.normalize(exts)
+
+    def _save_exclusions(self) -> None:
+        if getattr(self, "_loading_exclusions", False):
+            return
+        self.app.settings.exclude_types = self._selected_exclude_types()
+        self.app.settings.save()
+
+    def _load_exclusions(self, exts: list[str]) -> None:
+        """Refresh the exclusion UI from a list (used when the Ignored page clears one)."""
+        if not hasattr(self, "_exclude_checks"):
+            return
+        self._loading_exclusions = True
+        excl = {e.lower() for e in exts}
+        large_exts: set = set()
+        for cb, cb_exts in self._exclude_checks.items():
+            on = all(e in excl for e in cb_exts)
+            cb.set_active(on)
+            if on:
+                large_exts.update(cb_exts)
+        self._exclude_entry.set_text(", ".join(sorted(excl - large_exts)))
+        self._loading_exclusions = False
 
     def _category_column(self, cat: dict, saved_set: set[str]) -> Gtk.Widget:
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -496,8 +527,7 @@ class ScanPage(BasePage):
         s.min_size_mb = max(1, int(self.min_row.get_value()))
         s.file_types = self._selected_file_types()
         s.custom_extensions = self._ext_entry.get_text().strip()
-        s.exclude_extensions = self._exclude_entry.get_text().strip()
-        s.exclude_large = [cb.get_label() for cb in self._exclude_checks if cb.get_active()]
+        s.exclude_types = self._selected_exclude_types()
         s.save()
         self.window.start_scan(self._options())
 
