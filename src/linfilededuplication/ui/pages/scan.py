@@ -146,7 +146,7 @@ class ScanPage(BasePage):
         card.append(toprow)
 
         flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
-                           min_children_per_line=1, max_children_per_line=4,
+                           min_children_per_line=1, max_children_per_line=5,
                            column_spacing=20, row_spacing=14)
         for cat in filetypes.CATEGORIES:
             flow.append(self._category_column(cat, saved_set))

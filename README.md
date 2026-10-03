@@ -65,9 +65,13 @@ results appear.
 
 ### Scan scope & ignored items
 
-| Scan — tiers, file-type filter, custom extensions | Ignored — files & folders you skip |
+| File-type filter & exclusions | Ignored — files & folders you skip |
 | --- | --- |
-| ![Scan](docs/screenshots/scan.png) | ![Ignored](docs/screenshots/ignored.png) |
+| ![File types and exclusions](docs/screenshots/scan-exclude.png) | ![Ignored](docs/screenshots/ignored.png) |
+
+The **file-type filter** spans Images / Video / Music / **Documents** (PDF, EPUB and the full
+LibreOffice / OpenDocument family) / **Email** (EML, Outlook, Mbox, Apple Mail, …); the
+**Exclusion** row skips large types in one tap, with an **All** box to toggle them together.
 
 ### History — see what you reclaimed
 
