@@ -50,7 +50,10 @@ Rules of the house:
 
 ## Memory & docs
 
-- Design: `docs/CONCEPT.md`; mockups: `docs/mockups/`; changelog: `changelog.md`.
+- Technical design & roadmap: `docs/CONCEPT.md`. **UI/UX design reference** (UX laws, 2026 design
+  principles, WCAG 2.2 AA baseline, visual system, components, voice, acceptance checklist; drives
+  roadmap P8): `docs/design/GUI-GUIDE-AND-DESIGN-REFERENCE.md` (adapted from the Lin\* house guide
+  in `MensuraMedia/linapptemplate`). Mockups: `docs/mockups/`; changelog: `changelog.md`.
 - `.claude/memory/` holds decisions and change manifests; `.claude/rules/` holds the
   path-scoped core-purity and python-gtk rules.
 

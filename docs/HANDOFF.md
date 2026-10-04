@@ -161,7 +161,8 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
 
 ## 8. Reference material
 
-- Design: `docs/CONCEPT.md` · Features: `docs/FEATURES.md` · SpotCheck notes: `docs/SPOTCHECK.md`
+- Technical design & roadmap: `docs/CONCEPT.md` · Features: `docs/FEATURES.md` · SpotCheck notes: `docs/SPOTCHECK.md`
+- **UI/UX design reference** (UX laws, 2026 principles, WCAG 2.2 AA, visual system, components, voice, checklist → roadmap P8): `docs/design/GUI-GUIDE-AND-DESIGN-REFERENCE.md`
 - Mockups: `docs/mockups/` · Screenshots: `docs/screenshots/` · Brief: `docs/original-brief.txt`
 - Review mockup (proposals): published Artifact `LinFileDedup Proposals`.
 - Agent memory/backlog: `.claude/memory/`.

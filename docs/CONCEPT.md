@@ -7,9 +7,13 @@
 **Governance:** universal-instruction-set v2026.04
 **Visual system:** Adwaita, accent `#3584e4`, 212px sidebar, Cantarell / monospace
 
-A living version of this design (with diagrams) is kept alongside the repo; this file is the
-in-tree source of truth. HTML mockups are in `docs/mockups/`; the original brief is
-`docs/original-brief.txt`.
+This file is the in-tree source of truth for the **technical** design and roadmap. The **UI/UX
+design reference** — the ten UX laws, the ten 2026 design principles, the WCAG 2.2 AA baseline,
+the visual system, component library, page specs, voice and the acceptance checklist, adapted for
+LinFileDedup from the Lin\* house guide — is
+[`docs/design/GUI-GUIDE-AND-DESIGN-REFERENCE.md`](design/GUI-GUIDE-AND-DESIGN-REFERENCE.md); it
+drives the design work in the roadmap (§8, P8). HTML mockups are in `docs/mockups/`; the original
+brief is `docs/original-brief.txt`.
 
 ## 1. Vision
 
@@ -102,10 +106,17 @@ the optional hashing libraries. Flatpak is a follow-up.
 | P5 | Image depth (perceptual + keep-highest-res) | A test per image signal |
 | P6 | Advanced Scan (chunking, fuzzy, metadata, policy) | A test per signal |
 | P7 | CLI reusing core; scheduled scans | CLI records history |
-| P8 | Accessibility, responsive, dark mode | Audit test passes |
+| P8 | **Accessibility & design-reference pass** (both themes, keyboard, voice) | The [GUI guide](design/GUI-GUIDE-AND-DESIGN-REFERENCE.md) §14 checklist passes |
 | P9 | Packaging: desktop, metainfo, .deb, Flatpak skeleton | Validators pass |
 
-P0–P5 are substantially in place in this foundation; P6+ follow.
+P0–P6 are substantially in place in this foundation; P7+ follow.
+
+**P8 is specified by the [GUI Guide & Design Reference](design/GUI-GUIDE-AND-DESIGN-REFERENCE.md)**
+(§15, *Roadmap hooks*). Concretely: Keep/Delete shown as an icon **and** a word (not colour alone);
+a contrast audit in **both** light and dark; a full keyboard flow for selection and SpotCheck;
+focus rings; a 32 px target floor; 640 px / 200% reflow; screen-reader names and status
+announcements; a High-Contrast pass; a copy/voice pass to the three-part pattern; and a component
+sheet drawn with all states. Reviewers judge screens and mockups against the guide's §4–6 and §14.
 
 ## 9. Risks
 
