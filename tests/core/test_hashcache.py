@@ -16,9 +16,11 @@ def test_hit_only_when_unchanged(tmp_path):
     assert c.get(e) is None                       # empty
     c.put(e, "deadbeef")
     assert c.get(e) == "deadbeef"                 # unchanged -> hit
-    assert c.get(_entry("/a/b.dat", mtime=200.0)) is None    # mtime changed -> miss
-    assert c.get(_entry("/a/b.dat", size=11)) is None        # size changed -> miss
-    assert c.get(_entry("/a/b.dat", ino=9)) is None          # inode changed -> miss
+    assert c.get(_entry("/a/b.dat", mtime=200.0)) is None    # mtime changed -> miss (re-hash)
+    assert c.get(_entry("/a/b.dat", size=11)) is None        # size changed -> miss (re-hash)
+    # dev/inode are NOT part of the match: a removable drive remounted with a new device id or
+    # non-stable inodes must still hit, so repeat scans of USB/external drives stay fast.
+    assert c.get(_entry("/a/b.dat", dev=99, ino=9)) == "deadbeef"   # remount-tolerant -> hit
 
 
 def test_roundtrip_and_remove(tmp_path):

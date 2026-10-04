@@ -189,3 +189,31 @@ def test_duplicate_file_types_detected_across_sources(tmp_path):
     assert {f.source for f in groups[0].files} == {str(a), str(b)}   # spans BOTH sources
     assert groups[0].keeper.source == str(a)                 # keeper on the primary source
     assert fin.reclaimable == len(same)                      # one copy reclaimable
+
+
+def test_repeat_scan_skips_unchanged_files(tmp_path, monkeypatch):
+    """The index makes a repeat scan read nothing: a file unchanged since the last scan (same
+    size + mtime) reuses its stored digest with no prefix read, no full hash and no byte-verify.
+    Only new/changed files are read."""
+    import linfilededuplication.core.hashers as H
+    d = tmp_path / "s"; d.mkdir()
+    data = b"identical payload " * 400
+    (d / "a.bin").write_bytes(data)
+    (d / "b.bin").write_bytes(data)          # duplicate of a
+    (d / "u.bin").write_bytes(b"u" * 7000)   # unique
+    opts = ScanOptions(roots=[str(d)], find_images=False, min_size=1)
+
+    counts = {"full": 0, "verify": 0, "prefix": 0}
+    of, ov, op = H.full_hash, H.bytes_equal, H.prefix_hash
+    monkeypatch.setattr(H, "full_hash", lambda p, **k: (counts.__setitem__("full", counts["full"] + 1), of(p, **k))[1])
+    monkeypatch.setattr(H, "bytes_equal", lambda ps, **k: (counts.__setitem__("verify", counts["verify"] + 1), ov(ps, **k))[1])
+    monkeypatch.setattr(H, "prefix_hash", lambda p, **k: (counts.__setitem__("prefix", counts["prefix"] + 1), op(p, **k))[1])
+
+    f1 = scan(opts, lambda e: None)                       # first scan populates the index
+    assert f1.groups == 1 and counts["full"] >= 2         # the duplicate pair was read & hashed
+    for k in counts:
+        counts[k] = 0
+    f2 = scan(opts, lambda e: None)                       # repeat scan
+    assert f2.groups == 1                                 # still found
+    assert f2.total_reused == 2                           # both candidates served from the index
+    assert counts["full"] == 0 and counts["verify"] == 0 and counts["prefix"] == 0  # zero reads

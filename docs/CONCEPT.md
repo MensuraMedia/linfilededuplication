@@ -71,7 +71,10 @@ module in a subprocess with `sys.modules["gi"] = None`.
 1. **Size pre-filter** — group by exact byte size; singletons cannot be exact duplicates.
 2. **Progressive hash** — xxHash (or BLAKE2b) of the first 64 KB splits each size bucket.
 3. **Full SHA-256** — only for prefix-matched candidates; equal digests form a group.
-4. **Byte-for-byte verify** — optional final confirmation before a group is trusted.
+4. **Byte-for-byte verify** — final confirmation before a group is trusted. On a repeat scan it
+   runs only on groups containing a file **read this run** (new/changed); a group whose members
+   were all **unchanged since indexed** is trusted from the hash cache with no re-read (Trash-by-
+   default keeps the rare size+mtime-preserving-edit case recoverable). See FEATURES §4b.
 
 Images additionally get a perceptual hash (`imagehash.phash`); files within the configured
 Hamming distance are clustered by union-find and reported as near-duplicate groups.

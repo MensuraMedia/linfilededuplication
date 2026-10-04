@@ -65,13 +65,18 @@ def _fingerprint(path: str):
 
 def find_similar_groups(images: list[FileEntry], max_distance: int, emit: Emit,
                         cancel: threading.Event | None = None,
-                        progress_base: int = 0, progress_total: int = 0) -> list[DuplicateGroup]:
+                        progress_base: int = 0, progress_total: int = 0,
+                        cache=None, reused_by_src: dict | None = None,
+                        hashed_by_src: dict | None = None) -> list[DuplicateGroup]:
     """Cluster images whose perceptual hashes are within ``max_distance`` bits.
 
     Two images are joined only when BOTH their pHash and dHash are within ``max_distance``
     (dual-hash agreement), which filters out the smooth-image false positives that pHash
     produces on its own. Union-find over the pairwise check; bucketed by a pHash prefix
     first to keep the comparison count down on large sets.
+
+    When a ``cache`` (``core.phashcache.PHashCache``) is given, an image unchanged since the last
+    scan reuses its stored pHash/dHash with no re-open — so repeat image scans are fast too.
     """
     if not HAVE_IMAGEHASH:
         return []
@@ -79,7 +84,19 @@ def find_similar_groups(images: list[FileEntry], max_distance: int, emit: Emit,
     for i, e in enumerate(images):
         if cancel is not None and cancel.is_set():
             break
-        ph, dh, size = _fingerprint(e.path)
+        rec = cache.get(e) if cache is not None else None
+        if rec is not None:                              # unchanged image: reuse stored hashes
+            ph = imagehash.hex_to_hash(rec[0])
+            dh = imagehash.hex_to_hash(rec[1])
+            size = rec[2]
+            if reused_by_src is not None:
+                reused_by_src[e.source] = reused_by_src.get(e.source, 0) + 1
+        else:                                            # new/changed image: open and hash it
+            ph, dh, size = _fingerprint(e.path)
+            if ph is not None and dh is not None and cache is not None:
+                cache.put(e, str(ph), str(dh), size)
+            if hashed_by_src is not None:
+                hashed_by_src[e.source] = hashed_by_src.get(e.source, 0) + 1
         if ph is not None and dh is not None:
             e.width, e.height = size
             hashed.append((e, ph, dh))

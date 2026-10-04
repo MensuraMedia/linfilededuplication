@@ -130,8 +130,11 @@ mapping each file's **full path** to its fingerprint and digest:
 
 - The **key is the full path** (which includes the source root, so the same relative file on two
   sources is tracked separately).
-- The **fingerprint** is `dev` (filesystem id), `ino` (inode), `size` (bytes) and `mtime`
-  (modification time) — the fields that cheaply reveal whether a file changed.
+- The **change check matches on `size` + `mtime`** — the fields that reveal a content change. `dev`
+  (filesystem id) and `ino` (inode) are **stored but no longer required to match**: they change
+  when a **removable drive is remounted** (a new `st_dev`; exFAT/NTFS may not keep inodes), and
+  requiring them would miss the whole drive and force a full re-hash every time. Relaxing to
+  size+mtime is what makes a repeat scan of a USB/external drive actually fast.
 - The **`sha256`** is the content digest that the dedup comparison actually uses. (Filename is
   *not* part of identity — identity is content; the cache simply avoids recomputing that content
   hash.)
@@ -143,16 +146,28 @@ For each file that reaches the full-hash step, `HashCache.get(file)` decides:
 - **No history (new file).** The path is not in the cache → **miss** → the file is **hashed now**
   and its fingerprint + digest are **recorded** (`put`). New files and newly-added sources are
   always scanned.
-- **Changed file.** The path is cached, but `size`/`mtime`/`dev`/`ino` **differ** from the stored
-  fingerprint → **miss** → the file is **re-hashed** and its cache entry is **updated** with the
-  new fingerprint + digest.
-- **Unchanged file.** The path is cached and `size`/`mtime`/`dev`/`ino` **all match** → **hit** →
-  the stored `sha256` is **reused** and the file is **not read again**.
+- **Changed file.** The path is cached, but `size` or `mtime` **differ** from the stored
+  fingerprint → **miss** → the file is **re-hashed** and its cache entry is **updated**.
+- **Unchanged file.** The path is cached and `size` + `mtime` **match** → **hit** → the stored
+  `sha256` is **reused** and the file is **not read at all** — the screening is done before the
+  scan even computes the cheap 64 KB prefix hash, so an unchanged file costs only one `stat`.
 
-So the cache self-updates on every scan: unchanged files are skipped, while **new and changed
-files discovered are hashed and written back**, keeping the history current for the next
-comparison. (Validated by `tests/core/test_hashcache.py`: a second scan of unchanged files does
-zero re-hashing; a scan after editing one file and adding another re-hashes exactly those two.)
+So the cache self-updates on every scan: **unchanged files are skipped entirely** (no prefix read,
+no full hash — see *Reads skipped* below), while **new and changed files are hashed and written
+back**, keeping the index current. (Validated by `tests/core/test_scanner.py` and
+`test_hashcache.py`: a second scan of unchanged files does **zero content reads** — full, prefix
+and byte-verify all zero — yet still finds the groups; a scan after editing one file and adding
+another reads exactly those two.)
+
+**Reads skipped on a repeat scan.** The engine now screens by the index *first*, so a file
+unchanged since the last scan skips **all three** content reads it used to pay: the 64 KB prefix
+hash, the full SHA-256, **and** the byte-for-byte verify. A duplicate group whose every member was
+unchanged is trusted from its stored digests with no re-read; byte-verify still runs on any group
+that contains a file read this run. (See *Maintenance & safety*.)
+
+**Images too (`core/phashcache.py`).** The same size+mtime screening caches each image's
+perceptual hashes (pHash + dHash + pixel size) in `phashcache.json`, so a repeat image scan reuses
+them instead of re-opening and re-hashing every photo.
 
 ### Maintenance & safety
 
@@ -160,10 +175,15 @@ zero re-hashing; a scan after editing one file and adding another re-hashes exac
   (`HashCache.remove`, called from the Results actions) so the history stays truthful.
 - The file is **capped** (most-recent entries kept) and only tracks files that reach the full-hash
   step (collision candidates), so it stays small.
-- **Safety:** the cache only ever avoids recomputing a hash that would have been identical — it
-  never changes which files are judged equal, and the **byte-for-byte verification** still runs on
-  final groups. The one heuristic is `mtime`: a tool that edits a file while preserving its mtime
-  is the single case the fast path would miss, which the byte-verify still catches.
+- **Safety:** byte-for-byte verification **still runs on any group containing a file read this
+  run** (new or changed), so newly-introduced duplicates are always confirmed. A group whose every
+  member was **unchanged since it was indexed** is trusted from its stored `sha256` without a
+  re-read — the index *is* the comparison, which is the whole point of the speed-up. The one
+  residual heuristic is `mtime`: a tool that edits a file while keeping **both** its size and mtime
+  identical would let a stale digest stand; this is vanishingly rare, a SHA-256 collision is
+  effectively impossible, and **Trash-by-default keeps even that pathological case fully
+  recoverable**. Users who want the old always-verify behaviour can turn off *Reuse hashes* in
+  Settings (every file is then read every scan).
 
 ---
 

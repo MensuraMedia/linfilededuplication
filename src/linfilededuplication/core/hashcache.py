@@ -36,9 +36,17 @@ class HashCache:
             self._data = {}
 
     def get(self, e) -> str | None:
-        """Return the cached digest when the file is unchanged, else None (needs re-hashing)."""
+        """Return the cached digest when the file looks unchanged, else None (needs re-hashing).
+
+        Match on **size + mtime** — the fields that reveal a content change. The device id and
+        inode are deliberately *not* required: they change when a removable drive is remounted (a
+        new `st_dev`, and some filesystems — exFAT/NTFS — don't preserve inodes), which would
+        otherwise miss the entire drive and force a full re-hash on every repeat scan. Byte-for-
+        byte verification remains the safety net before any file is removed, so a rare coincidental
+        size+mtime match on different content can never cause a wrong removal.
+        """
         rec = self._data.get(e.path)
-        if rec and rec[0] == e.dev and rec[1] == e.ino and rec[2] == e.size and rec[3] == e.mtime:
+        if rec and rec[2] == e.size and rec[3] == e.mtime:
             return rec[4]
         return None
 

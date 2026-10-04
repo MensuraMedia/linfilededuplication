@@ -165,77 +165,101 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
             last_src_tick = now
 
     done = 0
+    freshly_hashed: set[str] = set()      # paths READ this run (new/changed); all others trusted
     for same_size in candidates:
         if cancel is not None and cancel.is_set():
             break
-        # progressive prefix hash splits the size bucket cheaply
-        by_prefix: dict[str, list[FileEntry]] = defaultdict(list)
+
+        # 1. Screen by the index FIRST. A file unchanged since the last scan (same size + mtime)
+        #    reuses its stored digest with NO read at all — not the full hash, not even the 64 KB
+        #    prefix. Only new or changed files are ever read. This is what makes a repeat scan fast.
+        by_full: dict[str, list[FileEntry]] = defaultdict(list)
+        hits: list[FileEntry] = []
+        misses: list[FileEntry] = []
         for e in same_size:
             if cancel is not None and cancel.is_set():
                 return groups
-            try:
-                by_prefix[hashers.prefix_hash(e.path)].append(e)
-            except OSError:
-                emit(events.ScanError(f"Could not read {e.name}", "Check file permissions.", e.path))
+            cached = cache.get(e) if cache is not None else None
+            if cached is not None:
+                e.full_hash = cached
+                by_full[cached].append(e)
+                hits.append(e)
+                if reused_by_src is not None:
+                    reused_by_src[e.source] = reused_by_src.get(e.source, 0) + 1
+            else:
+                misses.append(e)
             done += 1
             per_done[e.source] = per_done.get(e.source, 0) + 1
             tick_source(e)
             if done % 32 == 0:
                 emit(events.Progress(base + done, total, "hash", e.path))
-        for same_prefix in by_prefix.values():
-            if cancel is not None and cancel.is_set():
-                return groups
-            if len(same_prefix) < 2:
-                continue
-            by_full: dict[str, list[FileEntry]] = defaultdict(list)
-            for e in same_prefix:
+
+        # 2. New/changed files must be read. The cheap prefix hash avoids full-hashing a file that
+        #    can't match anything — but when the bucket already has cached hits, a miss could match
+        #    one of them (whose prefix we don't hold), so every miss is full-hashed in that case.
+        if misses:
+            if hits:
+                to_full = misses
+            else:
+                by_prefix: dict[str, list[FileEntry]] = defaultdict(list)
+                for e in misses:
+                    if cancel is not None and cancel.is_set():
+                        return groups
+                    try:
+                        by_prefix[hashers.prefix_hash(e.path)].append(e)
+                    except OSError:
+                        emit(events.ScanError(f"Could not read {e.name}",
+                                              "Check file permissions.", e.path))
+                to_full = [e for grp in by_prefix.values() if len(grp) >= 2 for e in grp]
+            for e in to_full:
                 if cancel is not None and cancel.is_set():
                     return groups
                 try:
-                    cached = cache.get(e) if cache is not None else None
-                    if cached is not None:        # unchanged file: reuse the stored digest
-                        e.full_hash = cached
-                        if reused_by_src is not None:
-                            reused_by_src[e.source] = reused_by_src.get(e.source, 0) + 1
-                    else:                          # new/changed file: hash it and remember
-                        if e.size >= _LARGE_FILE:  # log big reads so a slow hash is explainable
-                            log.info("hashing large file (%s): %s",
-                                     human_bytes(e.size), e.path)
-                        e.full_hash = hashers.full_hash(e.path, cancel=cancel)
-                        if cache is not None:
-                            cache.put(e, e.full_hash)
-                        if hashed_by_src is not None:
-                            hashed_by_src[e.source] = hashed_by_src.get(e.source, 0) + 1
+                    if e.size >= _LARGE_FILE:   # log big reads so a slow hash is explainable
+                        log.info("hashing large file (%s): %s", human_bytes(e.size), e.path)
+                    e.full_hash = hashers.full_hash(e.path, cancel=cancel)
+                    if cache is not None:
+                        cache.put(e, e.full_hash)
+                    if hashed_by_src is not None:
+                        hashed_by_src[e.source] = hashed_by_src.get(e.source, 0) + 1
+                    freshly_hashed.add(e.path)
                     by_full[e.full_hash].append(e)
                 except hashers.Cancelled:
                     log.info("hashing aborted by cancel: %s", e.path)
                     return groups
                 except OSError:
-                    emit(events.ScanError(f"Could not read {e.name}", "Check file permissions.", e.path))
-            for digest, members in by_full.items():
-                if len(members) < 2:
-                    continue
-                if opts.verify_bytes:
-                    try:
-                        if not hashers.bytes_equal([m.path for m in members], cancel=cancel):
-                            continue
-                    except hashers.Cancelled:
-                        log.info("byte-verify aborted by cancel")
-                        return groups
-                # Collapse files already hard-linked together (same inode): they are one
-                # physical file, so there is nothing to reclaim and they must not reappear.
-                by_inode: dict[tuple[int, int], FileEntry] = {}
-                for m in members:
-                    by_inode.setdefault((m.dev, m.ino), m)
-                distinct = list(by_inode.values())
-                if len(distinct) < 2:
-                    continue
-                grp = DuplicateGroup(kind=KIND_EXACT, key=digest, files=distinct)
-                if opts.detect_backups:
-                    backup_detect.analyze_group(grp)
-                policy.rank(grp, preferred=preferred, keep_newest=opts.keep_newest_backup)
-                groups.append(grp)
-                emit(events.GroupFound(grp))
+                    emit(events.ScanError(f"Could not read {e.name}",
+                                          "Check file permissions.", e.path))
+
+        # 3. Group by full digest (cached hits + freshly-hashed misses together).
+        for digest, members in by_full.items():
+            if len(members) < 2:
+                continue
+            # Byte-verify guards new/changed files: it runs on any group that contains a file read
+            # this run. A group whose every member was unchanged since it was indexed is trusted
+            # from its stored digest with no re-read — the index IS the comparison, and Trash-by-
+            # default keeps even the pathological (size+mtime-preserving edit) case recoverable.
+            if opts.verify_bytes and any(m.path in freshly_hashed for m in members):
+                try:
+                    if not hashers.bytes_equal([m.path for m in members], cancel=cancel):
+                        continue
+                except hashers.Cancelled:
+                    log.info("byte-verify aborted by cancel")
+                    return groups
+            # Collapse files already hard-linked together (same inode): they are one physical
+            # file, so there is nothing to reclaim and they must not reappear.
+            by_inode: dict[tuple[int, int], FileEntry] = {}
+            for m in members:
+                by_inode.setdefault((m.dev, m.ino), m)
+            distinct = list(by_inode.values())
+            if len(distinct) < 2:
+                continue
+            grp = DuplicateGroup(kind=KIND_EXACT, key=digest, files=distinct)
+            if opts.detect_backups:
+                backup_detect.analyze_group(grp)
+            policy.rank(grp, preferred=preferred, keep_newest=opts.keep_newest_backup)
+            groups.append(grp)
+            emit(events.GroupFound(grp))
     emit(events.Progress(base + to_hash, total, "hash", "Exact matching done"))
     for s, tot in per_total.items():       # settle every source's ring at 100%
         emit(events.Progress(tot, tot, "hash", "", source=s))
@@ -265,9 +289,13 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
     emit(events.Progress(0, 0, "walk", f"Found {total_files:,} files"))   # caption only
 
     cache = None
+    pcache = None
     if getattr(opts, "use_hash_cache", True):
         from linfilededuplication.core.hashcache import HashCache
         cache = HashCache()
+        if opts.find_images:
+            from linfilededuplication.core.phashcache import PHashCache
+            pcache = PHashCache()
     hashed_by_src: dict = {}
     reused_by_src: dict = {}
     groups = find_exact_groups(entries, opts, emit, cancel, total_work=total_work,
@@ -282,7 +310,8 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
             emit(events.Progress(total_files, total_work, "image", "Perceptual hashing images"))
             img_groups = image_perceptual.find_similar_groups(
                 images, opts.hamming, emit, cancel,
-                progress_base=total_files, progress_total=total_work)
+                progress_base=total_files, progress_total=total_work,
+                cache=pcache, reused_by_src=reused_by_src, hashed_by_src=hashed_by_src)
             for grp in img_groups:
                 if opts.detect_backups:
                     backup_detect.analyze_group(grp)
@@ -311,6 +340,8 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
 
     if cache is not None:
         cache.save()                          # persist reused/new digests for the next scan
+    if pcache is not None:
+        pcache.save()                         # persist perceptual hashes for the next image scan
     cancelled = cancel is not None and cancel.is_set()
     elapsed = time.time() - start
 
