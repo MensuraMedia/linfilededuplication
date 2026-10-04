@@ -129,6 +129,22 @@ re-opened and re-hashed (`core/image_perceptual.find_similar_groups` with the pe
 **New or newly-added sources** are always scanned — a path not in the index is a miss by
 definition, so adding a drive or a folder never skips its contents.
 
+**Changing the source selection never wipes the memory.** The cache is a single **global,
+path-keyed** index — it is *not* scoped to, or reset by, the set of sources chosen on the Scan
+page. The source list only decides which paths are *walked* this run:
+
+- **Removing a source** leaves its entries on disk, unused this scan; re-add it later and those
+  files **hit again** (if unchanged). Nothing is cleared when a source is removed.
+- **Adding a source** hashes only its *new* paths; any path already in the index still hits.
+- Entries leave the index only via the cap, a dedup removal (§8), or a file change — never because
+  the source selection changed.
+
+The **one caveat** follows from the key being the full path: if a drive mounts at a **different
+mountpoint** than before (`/media/user/USB-BACKUP` vs `/media/user/USB-BACKUP1`), its files have new
+paths and are treated as new. The size+mtime rule (§3) covers a drive getting a new device-id or
+inode on remount; it does **not** cover the *mountpoint* changing. Drives that always mount at the
+same path (the usual udisks-by-label case) get full hits.
+
 **Multi-source / cross-drive.** The key is the **full path** (including the source root), so the
 same relative file on two sources is tracked as two independent entries. This does **not** weaken
 cross-source dedup: duplicates are still grouped by **content SHA-256**, so the same bytes on a disk
@@ -243,3 +259,7 @@ Settings → Scanning (then no cache is used and every file is read every scan).
 - **Is anything sent anywhere?** No. All three stores are local files; nothing is transmitted.
 - **Can the cache cause a wrong deletion?** For new/changed files, no — byte-verify guards them. For
   the pathological size+mtime-preserving edit (§6), the Trash default keeps it recoverable.
+- **If I change my sources, do I lose the memory?** No. The index is global and path-keyed; adding
+  or removing sources never clears it (§4). A removed source's entries simply wait, unused, and hit
+  again if you re-add it. The only way to *not* hit is for the files' paths to change — e.g. a drive
+  mounting at a different mountpoint.
