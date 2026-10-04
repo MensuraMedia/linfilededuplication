@@ -46,6 +46,16 @@ class PHashCache:
         self._data[e.path] = [e.size, e.mtime, phash_hex, dhash_hex, [w, h]]
         self._dirty = True
 
+    def remove(self, paths) -> None:
+        """Drop entries for images removed or relinked by a dedup operation, and persist."""
+        changed = False
+        for p in paths:
+            if self._data.pop(p, None) is not None:
+                changed = True
+        if changed:
+            self._dirty = True
+            self.save(force=True)
+
     def save(self, force: bool = False) -> None:
         if not (self._dirty or force):
             return

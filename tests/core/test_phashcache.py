@@ -34,3 +34,11 @@ def test_cap(tmp_path):
         c.put(_e(f"/img/{i}.jpg"), "aa", "bb", (1, 1))
     c.save(force=True)
     assert len(phashcache.PHashCache(tmp_path / "p.json")) == phashcache.MAX_ENTRIES
+
+
+def test_remove_drops_entries(tmp_path):
+    from linfilededuplication.core.phashcache import PHashCache
+    c = PHashCache(tmp_path / "p.json")
+    c.put(_e("/x.jpg"), "aa", "bb", (1, 1)); c.save()
+    c.remove(["/x.jpg"])                                   # saves with force
+    assert PHashCache(tmp_path / "p.json").get(_e("/x.jpg")) is None

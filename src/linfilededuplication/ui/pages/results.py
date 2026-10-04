@@ -594,10 +594,16 @@ class ResultsPage(BasePage):
         return sw
 
     def _invalidate_cache(self, paths: list[str]) -> None:
-        """Drop removed/relinked files from the hash cache so the next scan stays truthful."""
+        """Drop removed/relinked files from both fingerprint caches so the next scan stays
+        truthful (content hashes and perceptual image hashes alike)."""
         try:
             from linfilededuplication.core.hashcache import HashCache
             HashCache().remove(paths)
+        except Exception:
+            pass
+        try:
+            from linfilededuplication.core.phashcache import PHashCache
+            PHashCache().remove(paths)
         except Exception:
             pass
 

@@ -114,6 +114,10 @@ the backup/removable drive. Disable it in Settings to use only the policy above.
 
 ## 4b. Scan fingerprint cache — the comparison history (`core/hashcache.py`)
 
+> The full behavioural spec — the rules for what is remembered, how it changes future scans, how it
+> persists and when it is invalidated — is **[`CACHE-AND-HISTORY.md`](CACHE-AND-HISTORY.md)**. This
+> section is the summary.
+
 So that a **re-scan**, or a scan that **compares against a newly-added source**, does not re-read
 files it has already fingerprinted, LinFileDedup keeps a persistent **hash cache** (a scan
 history of file fingerprints). It is enabled by default (Settings → Scanning → *Reuse hashes for
