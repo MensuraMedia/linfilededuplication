@@ -53,6 +53,20 @@ results appear.
 | --- | --- |
 | ![Sources](docs/screenshots/scan.png) | ![Per-source progress](docs/screenshots/scan-multisource.png) |
 
+### Faster repeat scans — and proof of it
+
+LinFileDedup remembers each file's fingerprint between scans, so re-scanning the same sources
+reuses what hasn't changed instead of re-reading it. A green **✓ Cached** badge marks every source
+that has a prior scan on record (hover it for the last run's details), and the **History** page
+keeps a **performance log** of every scan — when it ran, how long it took, files scanned, how many
+fingerprints were reused, and the **drive each source lives on** (model, SSD/HDD, interface,
+filesystem). The fingerprints are a pure speed accelerator: every match is still byte-verified, so
+losing the cache only costs time, never correctness.
+
+| “Cached” sources, ready to re-scan fast | Per-scan performance & drive specs |
+| --- | --- |
+| ![Cached sources](docs/screenshots/scan-cached.png) | ![Scan performance log](docs/screenshots/history-performance.png) |
+
 ### Backups, guidance, and scan scope
 
 | Probable backups in Results | Knowledge (searchable glossary + FAQ) |

@@ -167,6 +167,33 @@ zero re-hashing; a scan after editing one file and adding another re-hashes exac
 
 ---
 
+## 4c. "Cached" indicator & scan performance log (`core/scanstats.py`, `core/driveinfo.py`)
+
+Two surfaces make the cache visible and record how each scan performed.
+
+**The "✓ Cached" badge (Scan page).** Every source that has a prior scan on record shows a green
+**✓ Cached** pill beside its path, so *before* pressing Start the user knows a re-scan will reuse
+fingerprints and finish faster. The badge is **read-only** — it reads the small performance log
+(not the 27 MB hash cache) off the scan path and never writes to the cache. Its tooltip lists the
+last run's details: when it ran, files fingerprinted, percent reused, duration, and the drive.
+
+**The scan performance log.** Every completed scan appends a `ScanRun` to a tolerant JSON store at
+`~/.local/state/com.mensuramedia.linfilededuplication/scanruns.json` (newest first, capped at 50).
+Each run records **time, duration, throughput (files/s), files scanned, fingerprints reused vs.
+re-hashed, groups found**, and a per-source breakdown. The **History** page renders these under
+**Recent scans** (Simple / Advanced / Stopped chip, metrics line, and one line per source).
+
+**Source drive information (`core/driveinfo.py`).** For each source, the scanner probes the backing
+drive on the worker thread (never blocking the UI) via `lsblk` — **model, media kind (SSD/HDD),
+transport (usb/sata/nvme), filesystem, and size** — falling back to `/proc/mounts` + `statvfs` when
+`lsblk` is absent, so it always degrades gracefully. This is why the performance log can say e.g.
+*"WD_BLACK SN770 2TB · SSD · NVME · ext4 · 2.0 TB"* for each source.
+
+These records are a **speed accelerator only**: they never affect which files are judged equal
+(byte-verify still runs), so losing `scanruns.json` or `hashcache.json` costs time, not correctness.
+
+---
+
 ## 5. Scan scope controls (Scan page)
 
 ### 5.1 Tiers

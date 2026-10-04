@@ -120,7 +120,9 @@ def walk(opts: ScanOptions, cancel: threading.Event | None = None,
 def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
                       cancel: threading.Event | None = None,
                       total_work: int = 0, files_by_source: dict | None = None,
-                      preferred: list[str] | None = None, cache=None) -> list[DuplicateGroup]:
+                      preferred: list[str] | None = None, cache=None,
+                      hashed_by_src: dict | None = None,
+                      reused_by_src: dict | None = None) -> list[DuplicateGroup]:
     """Size bucket -> prefix hash -> full SHA-256 -> optional byte verify.
 
     When ``total_work`` is given (total files + any later passes), overall progress is reported as
@@ -193,6 +195,8 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
                     cached = cache.get(e) if cache is not None else None
                     if cached is not None:        # unchanged file: reuse the stored digest
                         e.full_hash = cached
+                        if reused_by_src is not None:
+                            reused_by_src[e.source] = reused_by_src.get(e.source, 0) + 1
                     else:                          # new/changed file: hash it and remember
                         if e.size >= _LARGE_FILE:  # log big reads so a slow hash is explainable
                             log.info("hashing large file (%s): %s",
@@ -200,6 +204,8 @@ def find_exact_groups(entries: list[FileEntry], opts: ScanOptions, emit: Emit,
                         e.full_hash = hashers.full_hash(e.path, cancel=cancel)
                         if cache is not None:
                             cache.put(e, e.full_hash)
+                        if hashed_by_src is not None:
+                            hashed_by_src[e.source] = hashed_by_src.get(e.source, 0) + 1
                     by_full[e.full_hash].append(e)
                 except hashers.Cancelled:
                     log.info("hashing aborted by cancel: %s", e.path)
@@ -262,8 +268,11 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
     if getattr(opts, "use_hash_cache", True):
         from linfilededuplication.core.hashcache import HashCache
         cache = HashCache()
+    hashed_by_src: dict = {}
+    reused_by_src: dict = {}
     groups = find_exact_groups(entries, opts, emit, cancel, total_work=total_work,
-                               files_by_source=files_by_source, preferred=preferred, cache=cache)
+                               files_by_source=files_by_source, preferred=preferred, cache=cache,
+                               hashed_by_src=hashed_by_src, reused_by_src=reused_by_src)
 
     notes: list[str] = []
     if opts.find_images and not (cancel is not None and cancel.is_set()):
@@ -304,6 +313,29 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
         cache.save()                          # persist reused/new digests for the next scan
     cancelled = cancel is not None and cancel.is_set()
     elapsed = time.time() - start
+
+    # Per-source performance record (timing captured above; drive specs probed here, on the
+    # worker thread, so the UI never blocks). Degrades gracefully when lsblk is absent.
+    from collections import Counter as _Counter
+    from linfilededuplication.core import driveinfo
+    bytes_by_source = _Counter()
+    for e in entries:
+        bytes_by_source[e.source] += e.size
+    per_source: list[dict] = []
+    for r in roots:
+        try:
+            drive = driveinfo.probe(r).to_dict()
+        except Exception:                      # never let hardware probing break a scan
+            drive = {}
+        per_source.append({
+            "path": r,
+            "files_scanned": files_by_source.get(r, 0),
+            "files_hashed": hashed_by_src.get(r, 0),
+            "files_reused": reused_by_src.get(r, 0),
+            "bytes_scanned": bytes_by_source.get(r, 0),
+            "drive": drive,
+        })
+
     fin = events.Finished(
         cancelled=cancelled,
         files_scanned=len(entries),
@@ -312,6 +344,11 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
         occupied_bytes=sum(f.size for g in groups for f in g.files),
         seconds=elapsed,
         notes=notes,
+        tier=getattr(opts, "tier", ""),
+        used_cache=cache is not None,
+        total_hashed=sum(hashed_by_src.values()),
+        total_reused=sum(reused_by_src.values()),
+        per_source=per_source,
     )
     log.info("scan %s: %d files, %d groups, %s reclaimable (%.1fs)",
              "cancelled" if cancelled else "finished", len(entries), len(groups),

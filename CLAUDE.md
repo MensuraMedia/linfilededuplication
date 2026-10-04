@@ -77,5 +77,7 @@ Rules of the house:
 
 P0–P6 complete: exact + image + advanced (chunking/fuzzy/metadata) engine, SpotCheck, backups,
 exclusions, info icons, Knowledge page, and full desktop integration (launcher, menu, tray,
-Alt-Tab, icon, `.deb`). 78 tests passing. Roadmap in `docs/CONCEPT.md`; feature notes in
+Alt-Tab, icon, `.deb`). Plus a per-scan performance log (`core/scanstats.py`) with source-drive
+specs (`core/driveinfo.py`), surfaced as a Scan-page "✓ Cached" badge and a History "Recent scans"
+list. 87 tests passing. Roadmap in `docs/CONCEPT.md`; feature notes in
 `docs/SPOTCHECK.md`.

@@ -404,8 +404,24 @@ class ScanPage(BasePage):
             empty.set_margin_top(6)
             box.append(empty)
             return
+        self._src_last = self._load_source_stats()
         for i, src in enumerate(self.sources):
             box.append(self._source_row(src, primary=(i == 0)))
+
+    def _load_source_stats(self) -> dict:
+        """Map each source path → its most recent (ScanRun, SourceStat) from the performance log.
+        The log is small (≤50 runs); reading it here is cheap and off the scan path."""
+        out: dict = {}
+        try:
+            from linfilededuplication.core.scanstats import ScanStatsStore
+            for run in ScanStatsStore().load():
+                for s in run.sources:
+                    key = s.path.rstrip("/")
+                    if key not in out:
+                        out[key] = (run, s)
+        except Exception:
+            _log.debug("scan stats unavailable", exc_info=True)
+        return out
 
     def _source_row(self, path: str, primary: bool) -> Gtk.Widget:
         row = Gtk.Box(spacing=12)
@@ -425,9 +441,63 @@ class ScanPage(BasePage):
         rm.connect("clicked", lambda _b, p=path: self._remove_source(p))
         row.append(ic)
         row.append(nm)
+        chip = self._cache_chip(path)
+        if chip is not None:
+            row.append(chip)
         row.append(meta)
         row.append(rm)
         return row
+
+    def _cache_chip(self, path: str):
+        """Green 'Cached' pill when this source has a prior scan on record; its tooltip lists the
+        last run's performance points (time, duration, files, reuse, drive specs)."""
+        last = getattr(self, "_src_last", {}).get(path.rstrip("/"))
+        if not last:
+            return None
+        run, s = last
+        chip = Gtk.Label(label=_("✓ Cached"))
+        chip.add_css_class("app-chip-ok")
+        chip.add_css_class("app-small")
+        chip.set_valign(Gtk.Align.CENTER)
+        chip.set_tooltip_markup(self._cache_tooltip(run, s))
+        return chip
+
+    def _cache_tooltip(self, run, s) -> str:
+        from linfilededuplication.core import driveinfo
+        lines = [f"<b>{GLib.markup_escape_text(_('Scanned before — fingerprints reused'))}</b>"]
+        rel = self._rel_time(run.when)
+        lines.append(_("Last scan: {rel}").format(rel=rel))
+        lines.append(_("{n:,} files fingerprinted").format(n=s.fingerprinted))
+        if s.files_reused or s.files_hashed:
+            lines.append(_("{pct}% reused, {h:,} re-hashed last time").format(
+                pct=s.cache_hit_pct, h=s.files_hashed))
+        if run.duration:
+            lines.append(_("Took {sec}").format(sec=self._fmt_duration(run.duration)))
+        label = driveinfo.describe(driveinfo.DriveInfo.from_dict(s.drive)) if s.drive else ""
+        if label:
+            lines.append(GLib.markup_escape_text(label))
+        return "\n".join(lines)
+
+    @staticmethod
+    def _rel_time(ts: float) -> str:
+        import time
+        d = max(0, int(time.time() - ts))
+        if d < 60:
+            return _("just now")
+        if d < 3600:
+            return _("{m} min ago").format(m=d // 60)
+        if d < 86400:
+            return _("{h} h ago").format(h=d // 3600)
+        return _("{d} days ago").format(d=d // 86400)
+
+    @staticmethod
+    def _fmt_duration(sec: float) -> str:
+        if sec < 1:
+            return _("under a second")
+        if sec < 60:
+            return _("{s:.1f}s").format(s=sec)
+        m, s = divmod(int(sec), 60)
+        return _("{m}m {s}s").format(m=m, s=s)
 
     def _source_meta(self, path: str, primary: bool) -> str:
         import shutil

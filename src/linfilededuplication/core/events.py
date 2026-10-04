@@ -55,3 +55,9 @@ class Finished(ScanEvent):
     occupied_bytes: int = 0         # total bytes held by all duplicate-group files (before)
     seconds: float = 0.0
     notes: list[str] = field(default_factory=list)
+    # performance record (see core.scanstats)
+    tier: str = ""                  # "simple" | "advanced"
+    used_cache: bool = True
+    total_hashed: int = 0           # candidate files read & hashed this run
+    total_reused: int = 0           # cache hits — fingerprints reused
+    per_source: list = field(default_factory=list)   # list[dict] of SourceStat fields

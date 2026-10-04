@@ -144,5 +144,34 @@ class MainWindow(Adw.ApplicationWindow):
         log.info("scan finished: groups=%d files=%d reclaimable=%d cancelled=%s (%.2fs)",
                  fin.groups, fin.files_scanned, fin.reclaimable, fin.cancelled, fin.seconds)
         self.sidebar.set_running("scan", False)
-        if not fin.cancelled and fin.groups:
-            self.toast(_("Found {n} duplicate groups").format(n=fin.groups))
+        self._record_scan_run(fin)
+        if fin.cancelled:
+            return
+        base = (_("Found {n} duplicate groups").format(n=fin.groups) if fin.groups
+                else _("No duplicates found"))
+        if getattr(fin, "used_cache", False):
+            self.toast(_("{base} · fingerprints saved for faster re-scans").format(base=base))
+        elif fin.groups:
+            self.toast(base)
+
+    def _record_scan_run(self, fin) -> None:
+        """Persist this scan's performance record (timing, throughput, per-source drive specs)."""
+        try:
+            from linfilededuplication.core.scanstats import ScanRun, ScanStatsStore, SourceStat
+            fields = set(SourceStat.__dataclass_fields__)
+            sources = [SourceStat(**{k: v for k, v in s.items() if k in fields})
+                       for s in getattr(fin, "per_source", []) or []]
+            ScanStatsStore().add(ScanRun(
+                duration=fin.seconds,
+                tier=getattr(fin, "tier", "") or "simple",
+                cancelled=fin.cancelled,
+                used_cache=getattr(fin, "used_cache", True),
+                total_files=fin.files_scanned,
+                total_hashed=getattr(fin, "total_hashed", 0),
+                total_reused=getattr(fin, "total_reused", 0),
+                groups=fin.groups,
+                reclaimable_bytes=fin.reclaimable,
+                sources=sources,
+            ))
+        except Exception:
+            log.exception("recording scan performance failed")
