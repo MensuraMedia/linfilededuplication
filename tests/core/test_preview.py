@@ -48,3 +48,20 @@ def test_video_is_classified_as_video():
 def test_unknown_video_ext_not_video():
     from linfilededuplication.core import preview as pv
     assert pv.preview("/x/readme.txt").kind != pv.KIND_VIDEO
+
+
+def test_audio_preview_is_audio_kind(tmp_path):
+    for name in ("song.mp3", "track.flac", "clip.opus", "voice.m4a", "tune.wav"):
+        p = tmp_path / name
+        p.write_bytes(b"\x00" * 64)
+        pv = preview.preview(str(p))
+        assert pv.kind == preview.KIND_AUDIO, name
+        assert pv.image_path == str(p)          # the player needs the real path
+
+
+def test_broad_image_formats_are_image_kind(tmp_path):
+    # HEIC / AVIF / SVG / camera-RAW are classified as images; the UI decodes or falls back.
+    for name in ("photo.heic", "shot.avif", "vector.svg", "raw.cr2", "raw.nef", "raw.dng"):
+        p = tmp_path / name
+        p.write_bytes(b"\x00" * 64)
+        assert preview.preview(str(p)).kind == preview.KIND_IMAGE, name

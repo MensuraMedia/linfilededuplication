@@ -369,7 +369,15 @@ edit-visible-through-both-paths, protected-path refusal, cross-filesystem error.
 A large side-by-side confirmation view — a *gate, not an actor*; closing it changes nothing. Each
 panel fills the modal and renders the file by kind:
 
-- **Images** — `Gtk.Picture`, content-fit.
+- **Images** — the image is decoded to a `Gdk.Texture` and shown content-fit. Broad format set:
+  JPG/PNG/GIF/BMP/TIFF/WEBP/SVG/ICO render natively; **HEIC/HEIF/AVIF/JXL** render when the
+  matching pixbuf loader is installed; **camera RAW** (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/…) and any
+  format with no loader fall back to an **Open in default viewer** card plus a one-line install
+  hint, so every image is at least identifiable and openable.
+- **Audio / music** — a music card that **plays inline** via **GtkMediaControls** (play / seek /
+  volume) when GTK's media backend (`libgtk-4-media-gstreamer`) is installed, so two tracks can be
+  compared **by ear**; without it, a **Play in default player** button and the install hint.
+  Supported: `.mp3/.flac/.wav/.aac/.m4a/.ogg/.opus/.wma/.aiff/.alac/.ape/.wv/.mka/…`.
 - **PDF** — a **page-by-page viewer**: the actual pages rasterized with `pdftoppm`, shown one at a
   time with **Prev / Page N / M / Next** and an **Actual size** zoom. Paging is **synced across
   panels**, so page N sits beside page N for a true A/B compare. Falls back to extracted text when

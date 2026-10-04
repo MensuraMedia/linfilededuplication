@@ -77,5 +77,6 @@ local, no network. A test asserts every `InfoHint` key resolves to an entry.
 ## Status
 
 All seven implemented and covered by tests (exclusions, backup detection, previews, glossary,
-plus the headless smoke test). Planned refinements: synced zoom and A/B difference view in
-SpotCheck; audio/video metadata providers; custom-glob UI.
+plus the headless smoke test). SpotCheck previews cover images (broad format set incl. HEIC/RAW
+fallback), **audio/music (inline player)**, video (inline player + poster), PDF (paged viewer),
+text/office/archive snippets. Planned refinements: synced zoom and A/B difference view; custom-glob UI.

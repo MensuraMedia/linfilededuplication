@@ -123,11 +123,9 @@ class SpotCheckDialog(Adw.Dialog):
         frame = Gtk.Frame(hexpand=True, vexpand=True)
         frame.set_size_request(-1, 200)         # minimum height; grows to fill
         if pv.kind == previewmod.KIND_IMAGE and pv.image_path:
-            pic = Gtk.Picture.new_for_filename(pv.image_path)
-            pic.set_content_fit(Gtk.ContentFit.CONTAIN)
-            pic.set_hexpand(True)
-            pic.set_vexpand(True)
-            frame.set_child(pic)
+            frame.set_child(self._image_view(pv.image_path))
+        elif pv.kind == previewmod.KIND_AUDIO and pv.image_path:
+            frame.set_child(self._audio_view(pv.image_path, pv.note))
         elif pv.kind == previewmod.KIND_VIDEO and pv.image_path:
             view = self._video_view(pv.image_path)
             frame.set_child(view if view is not None else self._text_view(pv))
@@ -137,6 +135,85 @@ class SpotCheckDialog(Adw.Dialog):
         else:
             frame.set_child(self._text_view(pv))
         return frame
+
+    def _image_view(self, path: str) -> Gtk.Widget:
+        """Render any image the platform can decode (JPG/PNG/GIF/BMP/TIFF/WEBP/SVG/ICO natively,
+        HEIC/AVIF/JXL when the matching pixbuf loader is installed). Formats with no loader (most
+        camera RAW, HEIC without heif-gdk-pixbuf) fall back to a Play/Open-in-viewer card so the
+        file is still identifiable and openable, with the one-line install hint."""
+        from gi.repository import Gdk, GLib
+        try:
+            texture = Gdk.Texture.new_from_filename(path)         # GError if no decoder/loader
+            pic = Gtk.Picture.new_for_paintable(texture)
+            pic.set_content_fit(Gtk.ContentFit.CONTAIN)
+            pic.set_hexpand(True)
+            pic.set_vexpand(True)
+            return pic
+        except GLib.Error:
+            return self._image_fallback(path)
+
+    def _image_fallback(self, path: str) -> Gtk.Widget:
+        import os
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, hexpand=True, vexpand=True)
+        box.set_valign(Gtk.Align.CENTER)
+        glyph = Gtk.Label(label="🖼")
+        glyph.add_css_class("app-savings-head")
+        box.append(glyph)
+        ext = os.path.splitext(path)[1].lstrip(".").upper() or _("Image")
+        cap = Gtk.Label(label=_("{ext} image").format(ext=ext), xalign=0.5)
+        cap.add_css_class("app-dim")
+        box.append(cap)
+        open_btn = Gtk.Button(label=_("Open in default viewer"))
+        open_btn.set_halign(Gtk.Align.CENTER)
+        open_btn.add_css_class("pill")
+        open_btn.connect("clicked", lambda _b, p=path: actions.open_file(p))
+        box.append(open_btn)
+        note = Gtk.Label(xalign=0.5, justify=Gtk.Justification.CENTER, wrap=True, label=_(
+            "Preview this format inside SpotCheck by installing its image loader\n"
+            "(e.g. heif-gdk-pixbuf for HEIC, or your photo app handles camera RAW)."))
+        note.add_css_class("app-small")
+        note.add_css_class("app-dim")
+        box.append(note)
+        return box
+
+    def _audio_view(self, path: str, note: str = "") -> Gtk.Widget:
+        """Play music inside SpotCheck so two tracks can be compared by ear. Uses GtkMediaControls
+        (play/seek/volume) when GTK's media backend is installed; otherwise a Play-in-default-player
+        button with the one-line install hint, so audio is at least openable."""
+        import os
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, hexpand=True, vexpand=True)
+        box.set_valign(Gtk.Align.CENTER)
+        glyph = Gtk.Label(label="♪")
+        glyph.add_css_class("app-savings-head")
+        box.append(glyph)
+        name = Gtk.Label(label=note or (os.path.splitext(path)[1].lstrip(".").upper() + " audio"),
+                         xalign=0.5)
+        name.add_css_class("app-dim")
+        name.add_css_class("app-small")
+        box.append(name)
+        try:
+            mf = Gtk.MediaFile.new_for_filename(path)
+            backend_ok = mf.__gtype__.name != "GtkNoMediaFile"
+        except Exception:
+            mf, backend_ok = None, False
+        if backend_ok and mf is not None:
+            mf.set_muted(False)
+            controls = Gtk.MediaControls(stream=mf)
+            controls.set_hexpand(True)
+            box.append(controls)
+        else:
+            play = Gtk.Button(label=_("▶  Play in default player"))
+            play.set_halign(Gtk.Align.CENTER)
+            play.add_css_class("pill")
+            play.connect("clicked", lambda _b, p=path: actions.open_file(p))
+            box.append(play)
+            hint = Gtk.Label(xalign=0.5, justify=Gtk.Justification.CENTER, wrap=True, label=_(
+                "Play audio inside SpotCheck by installing the GTK media backend:\n"
+                "sudo apt install libgtk-4-media-gstreamer"))
+            hint.add_css_class("app-small")
+            hint.add_css_class("app-dim")
+            box.append(hint)
+        return box
 
     def _video_view(self, path: str) -> Gtk.Widget | None:
         """Show a video thumbnail and play it. Uses GtkVideo (inline, with controls) when GTK's

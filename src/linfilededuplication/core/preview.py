@@ -19,11 +19,21 @@ KIND_TEXT = "text"
 KIND_META = "meta"
 KIND_PDF = "pdf"        # render the actual pages (UI), with text as a fallback
 KIND_VIDEO = "video"    # inline player (UI); metadata card as a fallback
+KIND_AUDIO = "audio"    # inline player (UI); metadata card as a fallback
 
 MAX_BYTES = 64 * 1024
 MAX_LINES = 200
 
-_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
+# Images: the GdkPixbuf-native set, plus modern/raw formats. Formats that need an extra pixbuf
+# loader (HEIC/AVIF/JXL) or a raw decoder (CR2/NEF/…) are still offered as images; the SpotCheck
+# viewer tries to render them and falls back gracefully (open-in-viewer) when a loader is absent.
+_IMAGE_EXT = {".jpg", ".jpeg", ".jfif", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp",
+              ".svg", ".svgz", ".ico", ".xpm", ".pnm", ".ppm", ".pgm", ".pbm", ".tga", ".qoi",
+              ".heic", ".heif", ".avif", ".jxl",
+              ".cr2", ".cr3", ".nef", ".nrw", ".arw", ".srf", ".sr2", ".dng", ".orf", ".rw2",
+              ".raf", ".pef", ".raw", ".rwl", ".x3f"}
+_AUDIO_EXT = {".mp3", ".flac", ".wav", ".wave", ".aac", ".m4a", ".m4b", ".ogg", ".oga", ".opus",
+              ".wma", ".aiff", ".aif", ".aifc", ".alac", ".ape", ".wv", ".mka", ".mpc", ".ra"}
 _VIDEO_EXT = {".mp4", ".m4v", ".mov", ".mkv", ".webm", ".avi", ".wmv", ".flv",
               ".mpg", ".mpeg", ".3gp", ".ogv"}
 _TEXT_EXT = {".txt", ".md", ".rst", ".log", ".csv", ".tsv", ".json", ".yaml", ".yml", ".toml",
@@ -142,6 +152,9 @@ def preview(path: str) -> Preview:
         if ext in _VIDEO_EXT:
             return Preview(KIND_VIDEO, os.path.basename(path), image_path=path,
                            note=ext.lstrip(".").upper() + " video")
+        if ext in _AUDIO_EXT:
+            return Preview(KIND_AUDIO, os.path.basename(path), image_path=path,
+                           note=ext.lstrip(".").upper() + " audio")
         if ext == ".pdf":
             snip = _pdf_snippet(path)       # text fallback if page rendering is unavailable
             return Preview(KIND_PDF, os.path.basename(path), image_path=path,
