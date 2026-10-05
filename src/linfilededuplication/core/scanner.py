@@ -380,6 +380,7 @@ def scan(opts: ScanOptions, emit: Emit, cancel: threading.Event | None = None) -
         total_hashed=sum(hashed_by_src.values()),
         total_reused=sum(reused_by_src.values()),
         per_source=per_source,
+        file_types=list(getattr(opts, "file_types", []) or []),
     )
     log.info("scan %s: %d files, %d groups, %s reclaimable (%.1fs)",
              "cancelled" if cancelled else "finished", len(entries), len(groups),

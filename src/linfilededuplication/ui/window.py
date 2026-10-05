@@ -171,6 +171,7 @@ class MainWindow(Adw.ApplicationWindow):
                 total_reused=getattr(fin, "total_reused", 0),
                 groups=fin.groups,
                 reclaimable_bytes=fin.reclaimable,
+                file_types=list(getattr(fin, "file_types", []) or []),
                 sources=sources,
             ))
         except Exception:

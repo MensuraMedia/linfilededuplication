@@ -224,8 +224,13 @@ Settings → Scanning (then no cache is used and every file is read every scan).
 - **Scan page — `✓ Cached` badge.** Every source with a prior scan on record shows the green pill;
   its tooltip lists the last run's time, files fingerprinted, % reused, duration and drive. The
   badge reads the small performance log, **not** the large hash cache, and is strictly read-only.
-- **History — Recent scans.** Each scan's performance (time, duration, throughput, files, % reused,
-  groups) with the per-source drive specs.
+- **History — Recent scans.** One compact entry per scan: the **duration** (bold, in the header),
+  a like-for-like **speed-up comparison** vs the previous scan of the same sources+tier, a **scope
+  line** (file-type filter — *All Files* or the chosen extensions — · files · **data scanned** ·
+  **reclaimable** · groups), and one terse line **per source** showing the full path (**mountpoint
+  + folder**) with its **drive specs** (model in tooltip; SSD/HDD · transport · filesystem · size).
+  "Reclaimable" is what the scan found as freeable; the amount actually **freed** is recorded
+  separately on the removal-history card at the top of the page when you confirm a cleanup.
 - **Post-scan toast.** On completion: *"… · fingerprints saved for faster re-scans."*
 - **Settings → Scanning — Reuse hashes for unchanged files.** The master switch (default on). Off =
   no cache, every file read every scan.

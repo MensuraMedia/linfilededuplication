@@ -50,3 +50,12 @@ def test_cap(tmp_path):
     for i in range(scanstats.MAX_ENTRIES + 10):
         store.add(_run(float(i)))
     assert len(store.load()) == scanstats.MAX_ENTRIES
+
+
+def test_file_types_and_bytes_scanned_round_trip():
+    r = ScanRun(file_types=[".jpg", ".png"],
+                sources=[SourceStat(path="/a", bytes_scanned=100),
+                         SourceStat(path="/b", bytes_scanned=250)])
+    back = ScanRun.from_dict(r.to_dict())
+    assert back.file_types == [".jpg", ".png"]
+    assert back.bytes_scanned == 350                 # summed across sources

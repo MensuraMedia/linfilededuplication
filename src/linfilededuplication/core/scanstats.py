@@ -52,12 +52,18 @@ class ScanRun:
     total_reused: int = 0
     groups: int = 0
     reclaimable_bytes: int = 0
+    file_types: list = field(default_factory=list)   # include-filter exts ([] = All Files)
     sources: list = field(default_factory=list)   # list[SourceStat]
 
     @property
     def throughput(self) -> float:
         """Files scanned per second (0 when duration is unknown)."""
         return self.total_files / self.duration if self.duration > 0 else 0.0
+
+    @property
+    def bytes_scanned(self) -> int:
+        """Total size of the files walked across all sources this run."""
+        return sum(s.bytes_scanned for s in self.sources)
 
     def to_dict(self) -> dict:
         return asdict(self)

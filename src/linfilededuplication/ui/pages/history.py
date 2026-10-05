@@ -227,38 +227,50 @@ class HistoryPage(BasePage):
             cl.add_css_class(css)
             box.append(cl)
 
-        # headline metrics: files · duration · throughput · groups · reuse
-        parts = [_("{n:,} files").format(n=run.total_files),
-                 self._fmt_duration(run.duration)]
-        if run.throughput:
-            parts.append(_("{n:,.0f}/s").format(n=run.throughput))
-        parts.append(_("{g} groups").format(g=run.groups))
-        if run.used_cache and (run.total_reused or run.total_hashed):
-            tot = run.total_reused + run.total_hashed
-            pct = round(100 * run.total_reused / tot) if tot else 0
-            parts.append(_("{pct}% reused").format(pct=pct))
-        metrics = Gtk.Label(label=" · ".join(parts), xalign=0.0)
-        metrics.add_css_class("app-small")
-        box.append(metrics)
+        # scope & size: file-type filter · files · data scanned · reclaimable · groups
+        sp = [self._filter_label(run.file_types), _("{n:,} files").format(n=run.total_files)]
+        if run.bytes_scanned:
+            sp.append(_("{b} scanned").format(b=human_bytes(run.bytes_scanned)))
+        if run.reclaimable_bytes:
+            sp.append(_("{b} reclaimable").format(b=human_bytes(run.reclaimable_bytes)))
+        sp.append(_("{g} groups").format(g=run.groups))
+        scope = Gtk.Label(label=" · ".join(sp), xalign=0.0, wrap=True)
+        scope.add_css_class("app-small")
+        if run.file_types:
+            scope.set_tooltip_text(_("File types: {x}").format(x=", ".join(run.file_types)))
+        box.append(scope)
 
+        # one line per source — the drive, folder and mountpoint, kept terse (full detail in tooltip)
         for s in run.sources:
-            label = driveinfo.describe(driveinfo.DriveInfo.from_dict(s.drive)) if s.drive else ""
-            size = human_bytes(s.drive.get("size_bytes") or s.drive.get("total_bytes") or 0) \
-                if s.drive else ""
-            bits = [os.path.basename(s.path.rstrip("/")) or s.path,
-                    _("{n:,} files").format(n=s.files_scanned)]
-            if label:
-                bits.append(label)
-            if size:
-                bits.append(size)
-            sl = Gtk.Label(label=" · ".join(bits), xalign=0.0)
-            sl.add_css_class("app-small")
-            sl.add_css_class("app-dim")
-            sl.add_css_class("app-mono")
-            sl.set_ellipsize(3)
-            sl.set_tooltip_text(s.path)
-            box.append(sl)
+            d = driveinfo.DriveInfo.from_dict(s.drive) if s.drive else None
+            tags = [t for t in ((d.kind if d else ""), (d.transport.upper() if d and d.transport else ""),
+                                (d.fstype if d else "")) if t]
+            dsize = human_bytes(d.size_bytes or d.total_bytes) if d and (d.size_bytes or d.total_bytes) else ""
+            right = _("{n:,} files").format(n=s.files_scanned)
+            if tags:
+                right += " · " + "·".join(tags)
+            if dsize:
+                right += " · " + dsize
+            srow = Gtk.Box(spacing=10)
+            pl = Gtk.Label(label=s.path, xalign=0.0, hexpand=True)   # full path = mountpoint + folder
+            pl.add_css_class("app-small"); pl.add_css_class("app-dim"); pl.add_css_class("app-mono")
+            pl.set_ellipsize(2)                                      # middle: keep root and tail
+            pl.set_tooltip_text((d.model + "\n" if d and d.model else "") + s.path)
+            mr = Gtk.Label(label=right, xalign=1.0)
+            mr.add_css_class("app-small"); mr.add_css_class("app-dim")
+            srow.append(pl); srow.append(mr)
+            box.append(srow)
         return box
+
+    @staticmethod
+    def _filter_label(file_types) -> str:
+        """'All Files' when no include filter, else a compact list of the chosen extensions."""
+        fts = list(file_types or [])
+        if not fts:
+            return _("All Files")
+        if len(fts) <= 5:
+            return ", ".join(fts)
+        return _("{head} +{n} more").format(head=", ".join(fts[:4]), n=len(fts) - 4)
 
     def _compare_text(self, run, prev):
         """Like-for-like duration comparison against the previous scan of the same sources — the

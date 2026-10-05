@@ -61,3 +61,4 @@ class Finished(ScanEvent):
     total_hashed: int = 0           # candidate files read & hashed this run
     total_reused: int = 0           # cache hits — fingerprints reused
     per_source: list = field(default_factory=list)   # list[dict] of SourceStat fields
+    file_types: list = field(default_factory=list)   # include-filter exts ([] = All Files)
