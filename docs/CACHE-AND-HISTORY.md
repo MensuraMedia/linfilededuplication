@@ -232,7 +232,43 @@ Settings → Scanning (then no cache is used and every file is read every scan).
 
 ---
 
-## 10. Enforced by tests
+## 10. How the metrics are produced — the display reflects the real scan
+
+The History numbers are **not decorative or estimated** — they are counted *inside the scan loop*,
+at the exact moments the cache is consulted, so they are a direct readout of how much the index was
+used. This is the link between "displayed in History" and "incorporated into the scan itself".
+
+| Metric | Where it comes from (measured during the scan) |
+| --- | --- |
+| **duration** | wall-clock `time.time()` around the whole run in `core/scanner.scan()` → `Finished.seconds` |
+| **files reused** (`total_reused`, per-source) | incremented at every **cache hit** in `find_exact_groups` (and `find_similar_groups` for images) — i.e. each file the index let the scan skip reading |
+| **files re-hashed** (`total_hashed`, per-source) | incremented at every **cache miss** — each new/changed file the scan actually read |
+| **% reused** | `reused / (reused + hashed)` — literally the share of candidate files served from the index this run |
+| **files scanned / bytes** (per source) | counted from the directory walk |
+| **drive specs** | probed once per source on the worker thread (`core/driveinfo.py`) |
+| **throughput** | `total_files / duration` |
+
+So the display is a true measurement of the scan's own behaviour:
+
+- **`% reused` is high and `duration` dropped** → the index was used; unchanged files were skipped.
+- **`% reused` is 0 and `duration` didn't drop** → the index was *not* used this run — because it
+  was a first/cold scan, the files genuinely changed, the **paths changed** (a drive at a new
+  mountpoint, §3/§4), or **the running app predates the caching code and must be restarted** (a
+  running process keeps the code it started with; reinstalling the files does not update it).
+
+**Duration comparison.** The History *Recent scans* list shows each scan's duration prominently and,
+for a scan it can pair with the **previous scan over the same sources at the same tier**, a
+like-for-like line — e.g. *"⚡ 5.6× faster than the previous scan of these sources (41.3 s → 7.4 s) ·
+99% of files reused from the index"*. That single line is how you confirm, at a glance, that
+indexing changed the scan: a cold scan (0% reused) next to a warm one (high % reused) with the time
+difference between them. Pairing requires the **same set of source paths and the same tier**, so the
+comparison isolates caching rather than a change in what was scanned.
+
+**Granularity.** Metrics are kept **per scan** and **per source** (reused vs. re-hashed counts, drive,
+files). Individual files are not timed separately; the per-source reuse counts are the finest grain,
+which is what matters for "did the index help this location?".
+
+## 11. Enforced by tests
 
 | Rule | Test |
 | --- | --- |
@@ -246,7 +282,7 @@ Settings → Scanning (then no cache is used and every file is read every scan).
 
 ---
 
-## 11. FAQ
+## 12. FAQ
 
 - **I re-scanned the same external drive and it wasn't faster — why?** Before the size+mtime fix
   (§3) a remount changed `dev`/`ino` and missed the whole drive. With the fix, the **first** scan

@@ -176,12 +176,26 @@ class HistoryPage(BasePage):
         wrap.append(sub)
         lst = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         lst.add_css_class("app-card")
-        for run in runs[:12]:
-            lst.append(self._run_row(run))
+        shown = runs[:12]
+        for i, run in enumerate(shown):
+            prev = self._previous_same_sources(run, runs[i + 1:])
+            lst.append(self._run_row(run, prev))
         wrap.append(lst)
         return wrap
 
-    def _run_row(self, run) -> Gtk.Widget:
+    @staticmethod
+    def _sig(run) -> frozenset:
+        return frozenset(s.path.rstrip("/") for s in run.sources)
+
+    def _previous_same_sources(self, run, older):
+        """The most recent earlier run over the SAME set of sources (for a like-for-like compare)."""
+        sig = self._sig(run)
+        for r in older:
+            if not r.cancelled and r.tier == run.tier and self._sig(r) == sig:
+                return r                            # same sources AND same tier = caching compare
+        return None
+
+    def _run_row(self, run, prev=None) -> Gtk.Widget:
         from linfilededuplication.core import driveinfo
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
         box.add_css_class("app-file-row")
@@ -193,11 +207,25 @@ class HistoryPage(BasePage):
         chip.add_css_class("app-small")
         chip.add_css_class("app-chip-fail" if run.cancelled else "app-chip-ok")
         chip.set_valign(Gtk.Align.CENTER)
-        when = Gtk.Label(label=_when(run.when), xalign=0.0)
+        when = Gtk.Label(label=_when(run.when), xalign=0.0, hexpand=True)
         when.add_css_class("app-small")
+        # duration, emphasised, on the right of the header — the headline comparison metric
+        dur = Gtk.Label(label=self._fmt_duration(run.duration), xalign=1.0)
+        dur.add_css_class("app-group-title")
+        dur.add_css_class("app-keep-text")
+        dur.set_tooltip_text(_("Scan duration"))
         head.append(chip)
         head.append(when)
+        head.append(dur)
         box.append(head)
+
+        cmp = self._compare_text(run, prev)
+        if cmp is not None:
+            text, css = cmp
+            cl = Gtk.Label(label=text, xalign=0.0, wrap=True)
+            cl.add_css_class("app-small")
+            cl.add_css_class(css)
+            box.append(cl)
 
         # headline metrics: files · duration · throughput · groups · reuse
         parts = [_("{n:,} files").format(n=run.total_files),
@@ -231,6 +259,27 @@ class HistoryPage(BasePage):
             sl.set_tooltip_text(s.path)
             box.append(sl)
         return box
+
+    def _compare_text(self, run, prev):
+        """Like-for-like duration comparison against the previous scan of the same sources — the
+        line that makes the index/cache speed-up visible. Returns (text, css-class) or None."""
+        if prev is None or run.cancelled or run.duration <= 0 or prev.duration <= 0:
+            return None
+        cur, old = run.duration, prev.duration
+        reused = ""
+        tot = run.total_reused + run.total_hashed
+        if run.used_cache and tot:
+            reused = _(" · {pct}% of files reused from the index").format(
+                pct=round(100 * run.total_reused / tot))
+        span = _("{old} → {new}").format(old=self._fmt_duration(old), new=self._fmt_duration(cur))
+        if cur <= old / 1.15:                       # meaningfully faster
+            return (_("⚡ {f:.1f}× faster than the previous scan of these sources  ({span}){r}")
+                    .format(f=old / cur, span=span, r=reused), "app-keep-text")
+        if cur >= old * 1.15:                        # meaningfully slower
+            return (_("{f:.1f}× slower than the previous scan  ({span})")
+                    .format(f=cur / old, span=span), "app-del-text")
+        return (_("about the same as the previous scan  ({span}){r}").format(span=span, r=reused),
+                "app-dim")
 
     @staticmethod
     def _fmt_duration(sec: float) -> str:
