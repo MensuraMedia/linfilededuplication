@@ -1,8 +1,11 @@
 # LinFileDedup — Handoff
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-05
 **Repo:** https://github.com/MensuraMedia/linfilededuplication (default branch `main`)
-**Status:** P0–P6 complete and installed; actively iterating on Results/Scan/SpotCheck UX.
+**Status:** P0–P6 complete and installed. Fingerprint cache + scan-performance history now
+deliver genuinely fast repeat scans (unchanged files skipped entirely); SpotCheck covers audio +
+all image types; the Lin\* UI/UX design reference is in-tree. Actively iterating on
+Scan/Results/History/SpotCheck UX.
 **Owner:** MensuraMedia (`lin-*` desktop app series).
 
 This is the practical "pick it up and keep going" document. Design rationale is in
@@ -26,7 +29,7 @@ MensuraMedia `gtk4-dashboard-template` house pattern.
 ./run.sh                        # or: PYTHONPATH=src .venv/bin/python -m linfilededuplication
 ./run.sh --debug                # verbose logging
 python3 -m linfilededuplication --smoke   # build every page headless and exit (CI-safe)
-pytest -q                       # 78 tests; pure-core runs anywhere, UI smoke needs a display
+pytest -q                       # 95 tests; pure-core runs anywhere, UI smoke needs a display
 ruff check src tests            # lint (ruff not always installed in the venv)
 scripts/build-deb.sh            # -> dist/linfilededuplication_<ver>_all.deb
 scripts/install.sh              # install to ~/.local (writes launcher, icons, index.theme)
@@ -77,10 +80,13 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
 | Queue drain / signals | `services/scan_controller.py` |
 | Window shell / pages registry | `ui/window.py`, `ui/pages/__init__.py` |
 | Scan page (tiers, **multi-source list**, options, file-type filter, **per-source ring rows**) | `ui/pages/scan.py` |
-| History store / page | `config/history.py`, `ui/pages/history.py` |
-| Hash cache (fast repeat / cross-source scans) | `core/hashcache.py` |
-| Results (chart, formula card, action bar, rows, Delete All, Ignore) | `ui/pages/results.py` |
-| SpotCheck (image/pdf/video players) | `ui/pages/spotcheck.py` |
+| Removal history store / History page (+ **Recent scans** performance list, duration compare) | `config/history.py`, `ui/pages/history.py` |
+| **Content hash cache** (size+mtime match, remount-tolerant; fast repeat/cross-source scans) | `core/hashcache.py` |
+| **Perceptual image cache** (pHash/dHash reuse for unchanged images) | `core/phashcache.py` |
+| **Scan performance log** (per-scan ScanRun/SourceStat → `scanruns.json`) | `core/scanstats.py` |
+| **Source drive specs** (lsblk model/SSD-HDD/transport/fstype/size; degrades w/o lsblk) | `core/driveinfo.py` |
+| Results (chart, formula card, action bar, rows, Delete All, Ignore, `_invalidate_cache`) | `ui/pages/results.py` |
+| SpotCheck (image/**audio**/pdf/video players + graceful fallbacks) | `ui/pages/spotcheck.py` |
 | Space-savings bars / percentage ring / info hint | `ui/widgets/space_chart.py`, `ui/widgets/ring_loader.py`, `ui/widgets/info_hint.py` |
 | Theme palette | `ui/theme_loader.py` · styles `data/css/app.css` |
 | Settings (tolerant JSON) | `config/settings.py` |
@@ -89,7 +95,41 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
 
 ---
 
-## 5. Recent work (this session, 2026-09-30 → 2026-10-01)
+## 5. Recent work
+
+### 2026-10-03 → 10-05
+
+- **Repeat scans now skip previously-scanned files entirely.** Three fixes so the index delivers
+  the speed-up: (1) `hashcache.get` matches on **size+mtime only** — `dev`/`ino` stored but not
+  required, so a remounted USB/exFAT/NTFS drive hits instead of missing every file; (2)
+  `find_exact_groups` screens by the index **first** — an unchanged file skips the prefix read, the
+  full SHA-256, **and** byte-verify (verify still runs on any group with a file read this run);
+  (3) **perceptual cache** (`core/phashcache.py`) reuses image pHash/dHash. Measured: a 2nd scan of
+  unchanged files does **zero** content reads. `_invalidate_cache` now clears **both** caches on
+  removal. Full spec: `docs/CACHE-AND-HISTORY.md`.
+- **Scan performance log** (`core/scanstats.py` → `scanruns.json`, cap 50) recorded in
+  `window._on_scan_finished`; per-scan + per-source counters (reused vs hashed) measured **inside**
+  the scan loop. **Source drive specs** via `core/driveinfo.py` (lsblk; `/proc/mounts`+statvfs
+  fallback).
+- **Scan page "✓ Cached" badge** per source with a prior scan (read-only; reads the perf log, not
+  the 27 MB hash cache); tooltip = last run's metrics + drive.
+- **History → Recent scans**: per-scan rows — bold **duration**, a like-for-like **speed-up
+  comparison** vs the previous scan of the same sources+tier ("⚡ N× faster … · % reused"), a
+  compact **scope line** (file-type filter · files · GB scanned · GB reclaimable · groups), and one
+  terse line per source (full path = mountpoint+folder · drive specs). `Finished`/`ScanRun` carry
+  `file_types`.
+- **SpotCheck**: **audio/music** now previews with an inline player (GtkMediaControls, else
+  Play-in-default + hint); **all image types** — decode to `Gdk.Texture`, with HEIC/AVIF/JXL via
+  loaders and camera-RAW/loader-less formats falling back to an Open-in-viewer card.
+- **UI/UX design reference** `docs/design/GUI-GUIDE-AND-DESIGN-REFERENCE.md` (adapted from the Lin\*
+  house guide in `linapptemplate`); wired into the roadmap (CONCEPT §8, P8).
+- **Exclusions**: System/Trash presets now skip mounted-drive junk (`$RECYCLE.BIN`, `System Volume
+  Information`, …). **File types**: Documents gains full LibreOffice/ODF; new **Email** category;
+  five include-columns; exclusion **All** box.
+- Docs: new `docs/CACHE-AND-HISTORY.md`; uniform CC BY-NC 4.0 note. 95 tests (added driveinfo,
+  scanstats, phashcache, repeat-scan, preview audio/image).
+
+### 2026-09-30 → 2026-10-01
 
 - SpotCheck: **PDF page-by-page viewer** (synced A/B, zoom) and **inline video player**.
 - Results: **right-click Explore here / Open / Copy path** (row-scoped); fixed hard-link not
@@ -137,11 +177,28 @@ GObject signals `scan-started / progress / group-found / scan-error / scan-finis
 
 ## 6. Backlog / known gaps
 
+- **Cache is path-keyed → mountpoint-change caveat.** A file whose *path* changes (a drive mounted
+  at a new mountpoint, or a moved/renamed file) is seen as new and re-hashed once. The size+mtime
+  match already handles dev/ino changes on remount; the remaining case is the path itself. Candidate
+  fix (discussed, not built): a secondary **`(volume-UUID, inode)`** key with path fallback — stable
+  across remounts *and* moves on ext4/btrfs/xfs, so those drives become mountpoint-independent and
+  survive reorganisation with no re-hash. **Not** universal: exFAT/NTFS/FAT don't give stable
+  inodes, and writing an ID into files (xattr/sidecar) is rejected (breaks read-only safety, and
+  unsupported on those filesystems). So it's an ext4-and-friends improvement, not a cure-all. See
+  `docs/CACHE-AND-HISTORY.md` §3–4.
+- **Warm-scan floor = the directory walk.** Once reads are cached away, a repeat scan's time is
+  dominated by `stat`-ing the tree (required to read size+mtime) — irreducible without a riskier
+  directory-mtime walk cache. Expect the speed-up to track how read-heavy a scan is, not to reach
+  ~100%.
 - **Hard-link has no confirm dialog** (Trash does) — worth adding for consistency.
 - **Perceptual default `hamming=8`** is reasonable but slightly loose for smooth high-res photos;
   the dual-hash guard mitigates it. Tunable in Settings if desired.
 - `.deb` could add `python3-imagehash` / GStreamer codec packs to `Recommends:` so a normal
-  install offers image near-dup and video playback.
+  install offers image near-dup and audio/video playback.
+
+**Resolved this session:** History showing no scans (→ Recent-scans performance log); SpotCheck
+music had no preview (→ inline audio player); image previews limited to a few formats (→ broad set
++ fallback); external-drive re-scans not using the cache (→ remount-tolerant size+mtime match).
 
 ---
 

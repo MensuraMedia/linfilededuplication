@@ -1,7 +1,8 @@
 # LinFileDedup — Concept & Technical Design
 
 **Project:** linfilededuplication (LinFileDedup)
-**Status:** P0 foundation complete; exact engine + image near-duplicates working
+**Status:** P0–P6b in place — exact + image + advanced engine, multi-source, fingerprint cache +
+scan-performance history (fast index-first repeat scans), SpotCheck, full desktop integration
 **Target platform:** Debian 12/13 + Linux Mint
 **Foundation:** MensuraMedia `gtk4-dashboard-template`, ported to GTK 4 + libadwaita
 **Governance:** universal-instruction-set v2026.04
@@ -108,11 +109,18 @@ the optional hashing libraries. Flatpak is a follow-up.
 | P4 | Simple Scan UI (scan + results, trash/hard-link) | A scan runs end to end |
 | P5 | Image depth (perceptual + keep-highest-res) | A test per image signal |
 | P6 | Advanced Scan (chunking, fuzzy, metadata, policy) | A test per signal |
+| **P6b** | **Fingerprint cache + scan-performance history** (index-first fast repeat scans, remount-tolerant cache, perceptual cache, per-scan/per-source metrics + drive specs in History) | Repeat scan of unchanged files does **zero** content reads (measured); caches + log persist across restarts. **Delivered.** |
 | P7 | CLI reusing core; scheduled scans | CLI records history |
 | P8 | **Accessibility & design-reference pass** (both themes, keyboard, voice) | The [GUI guide](design/GUI-GUIDE-AND-DESIGN-REFERENCE.md) §14 checklist passes |
 | P9 | Packaging: desktop, metainfo, .deb, Flatpak skeleton | Validators pass |
 
-P0–P6 are substantially in place in this foundation; P7+ follow.
+P0–P6b are substantially in place in this foundation; P7+ follow. The cache/history rules are
+specified in [`CACHE-AND-HISTORY.md`](CACHE-AND-HISTORY.md).
+
+**Candidate enhancement (backlog):** a secondary `(volume-UUID, inode)` cache key with path
+fallback, to make ext4/btrfs/xfs drives mountpoint-independent and reuse fingerprints across
+moves/renames — without writing to files (exFAT/NTFS keep the path key, since they lack stable
+inodes). See `docs/HANDOFF.md §6` and `CACHE-AND-HISTORY.md` §3–4.
 
 **P8 is specified by the [GUI Guide & Design Reference](design/GUI-GUIDE-AND-DESIGN-REFERENCE.md)**
 (§15, *Roadmap hooks*). Concretely: Keep/Delete shown as an icon **and** a word (not colour alone);
